@@ -160,6 +160,22 @@ CREATE POLICY tenant_isolation ON public.conta_personalizacao
 USING (public.app_system_mode() OR conta_id=public.app_current_conta_id())
 WITH CHECK (public.app_system_mode() OR conta_id=public.app_current_conta_id());
 
+-- Alguns bancos legados podem não ter recebido a migration 046 que criou a
+-- flag usada pelos índices de cadastros únicos. A fundação multiempresa é
+-- compatível com esses bancos: cria somente a coluna necessária, preservando
+-- os dados existentes e deixando o valor antigo como não arquivado.
+DO $$ BEGIN
+  IF to_regclass('public.empresas') IS NOT NULL THEN
+    ALTER TABLE public.empresas ADD COLUMN IF NOT EXISTS arquivado_por_duplicidade BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF to_regclass('public.clientes_pf') IS NOT NULL THEN
+    ALTER TABLE public.clientes_pf ADD COLUMN IF NOT EXISTS arquivado_por_duplicidade BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  IF to_regclass('public.leads') IS NOT NULL THEN
+    ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS arquivado_por_duplicidade BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+END $$;
+
 -- Unicidade de cadastro passa a ser por conta: o mesmo cliente pode ser atendido por empresas diferentes da plataforma.
 DO $$ BEGIN
   IF to_regclass('public.empresas') IS NOT NULL THEN
