@@ -11,7 +11,7 @@ WORKDIR /app
 
 FROM base AS build-deps
 
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml .npmrc pnpmfile.cjs ./
 COPY patches/ ./patches/
 
 RUN --mount=type=cache,id=destrava-pnpm-build,target=/pnpm/store \
@@ -22,7 +22,7 @@ FROM base AS prod-deps
 
 ENV NODE_ENV=production
 
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml .npmrc pnpmfile.cjs ./
 COPY patches/ ./patches/
 
 RUN --mount=type=cache,id=destrava-pnpm-prod,target=/pnpm/store \
