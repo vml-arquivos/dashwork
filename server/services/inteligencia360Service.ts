@@ -981,7 +981,10 @@ export function consolidarEtapaIdentidadeDocumental(params: {
 
   const cartaoAnalisado = Boolean(
     analiseCnpj
-    && analiseCnpj?.cartao_anexado === true
+    && cartaoAnexado
+    // cartao_anexado foi adicionado depois; ausência preserva análises legadas,
+    // enquanto false explícito continua bloqueando o avanço.
+    && analiseCnpj?.cartao_anexado !== false
     && analiseCnpj?.cartao_pendente_ocr !== true
     && ["concluida", "revisao_humana"].includes(String(analiseCnpj.status || "")),
   );
@@ -1042,7 +1045,7 @@ export function consolidarEtapaIdentidadeDocumental(params: {
   for (const doc of documentos) {
     if (!doc.anexado) bloqueios.push(`${doc.nome} ainda não foi anexado.`);
     else if (doc.status === "falha_leitura") bloqueios.push(doc.diagnostico || `${doc.nome} apresentou falha na leitura automática.`);
-    else if (!doc.analisado) bloqueios.push(`${doc.nome} está anexado, mas o processamento ainda não foi concluído.`);
+    else if (!doc.analisado) bloqueios.push(`${doc.nome} está anexado, mas ainda não foi analisado.`);
     else if (!doc.consistente) bloqueios.push(`${doc.nome} possui divergência que exige revisão.`);
   }
   for (const alerta of [...cartaoBloqueios, ...qsa.graves, ...enquadramento.graves]) {

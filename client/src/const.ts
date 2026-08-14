@@ -1,6 +1,6 @@
 export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 
-export const APP_TITLE = import.meta.env.VITE_APP_TITLE || "App";
+export const APP_TITLE = import.meta.env.VITE_APP_NAME || import.meta.env.VITE_APP_TITLE || "Work Pro";
 
 export const APP_LOGO = "/destrava-logo.svg";
 

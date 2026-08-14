@@ -4,10 +4,12 @@ import { getCurrentContaId, LEGACY_DEFAULT_CONTA_ID } from "./tenantContext";
 
 const { Pool } = pkg;
 const DEFAULT_CONTA_ID = process.env.DEFAULT_CONTA_ID || LEGACY_DEFAULT_CONTA_ID;
+const DB_SSL_ENABLED = /^true$/i.test(String(process.env.DB_SSL || "false"));
+const DB_SSL_REJECT_UNAUTHORIZED = !/^false$/i.test(String(process.env.DB_SSL_REJECT_UNAUTHORIZED || "true"));
 
 const baseConfig = {
   connectionString: process.env.DATABASE_URL,
-  ssl: false,
+  ssl: DB_SSL_ENABLED ? { rejectUnauthorized: DB_SSL_REJECT_UNAUTHORIZED } : false,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
@@ -24,7 +26,9 @@ if (!/^[a-z_][a-z0-9_]*$/i.test(TENANT_DB_ROLE)) {
 
 function createPool(extra: Record<string, unknown> = {}, restrictToTenantRole = false): PgPool {
   const dbPool = new Pool({ ...baseConfig, ...extra } as any) as PgPool;
-  dbPool.on("error", (err) => console.error("[DB] Erro inesperado no pool:", err.message));
+  if (typeof (dbPool as any).on === "function") {
+    dbPool.on("error", (err) => console.error("[DB] Erro inesperado no pool:", err.message));
+  }
 
   if (restrictToTenantRole) {
     const rawConnect = dbPool.connect.bind(dbPool);

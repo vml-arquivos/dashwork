@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { normalizeRole } from "./auth.ts";
 import { getPermissoes, temPermissao, podeGerenciar, cargosGerenciaveis, Permissoes } from "../../shared/cargos.ts";
+import { systemPool } from "../databasePools";
+import { carregarFeatureAccessConfig, isFeatureEnabledForUser } from "../services/featureAccessService";
+import { ACCOUNT_CONTROLLED_FEATURES } from "../../shared/accountProfiles";
 
 /**
  * Middleware de autorização por cargo.
@@ -51,6 +54,47 @@ export function requirePermissao(permissao: keyof Permissoes) {
     }
 
     next();
+  };
+}
+
+/**
+ * Gating server-side por módulo da conta. A interface pode ocultar menus, mas
+ * qualquer endpoint controlado também precisa consultar a conta no banco para
+ * impedir acesso direto por alteração manual de URLs/IDs.
+ */
+export function requireAccountFeature(featureKey: string) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      res.status(401).json({ error: "Não autenticado" });
+      return;
+    }
+    try {
+      const { rows } = await systemPool.query(
+        "SELECT status, modulos_ativos FROM contas_plataforma WHERE id = $1 LIMIT 1",
+        [req.user.conta_id],
+      );
+      const account = rows[0];
+      if (!account || account.status !== "ativo") {
+        res.status(403).json({ error: "Conta sem acesso ativo à plataforma." });
+        return;
+      }
+      const modules = Array.isArray(account.modulos_ativos)
+        ? account.modulos_ativos.map(String)
+        : [];
+      if (ACCOUNT_CONTROLLED_FEATURES.includes(featureKey) && modules.length > 0 && !modules.includes(featureKey)) {
+        res.status(403).json({ error: "Esta função não está ativa para a conta." });
+        return;
+      }
+      const config = carregarFeatureAccessConfig();
+      if (!isFeatureEnabledForUser(config, featureKey, req.user.id)) {
+        res.status(403).json({ error: "Esta função foi desativada para este usuário." });
+        return;
+      }
+      next();
+    } catch (error) {
+      console.error(`[feature-gate:${featureKey}]`, error);
+      res.status(503).json({ error: "Não foi possível validar o acesso à função." });
+    }
   };
 }
 

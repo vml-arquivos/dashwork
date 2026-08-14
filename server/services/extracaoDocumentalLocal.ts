@@ -332,7 +332,7 @@ function parseAtosJunta(texto: string): { dados: Record<string, any>; confianca:
     || limparValor(linhas.find((linha) => /\b(?:ltda|limitada|eireli|s\/?a)\b/i.test(linha) && !/qualificacao|socio|administrador/i.test(linha)) || null);
   let nire = limparValor(valorAposRotulo(linhas, ['nire', 'número de identificação do registro de empresas', 'numero de identificacao do registro de empresas']));
   if (nire) nire = onlyDigits(nire) || nire;
-  const capitalSocial = numeroMonetario(valorAposRotulo(linhas, ['capital social', 'capital social atual']));
+  const capitalSocial = numeroMonetario(valorAposRotulo(linhas, ['capital social atual', 'capital social']));
 
   const historico: Array<{ numero: string | null; data: string; tipo_ato: string | null }> = [];
 

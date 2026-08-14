@@ -1,0 +1,68 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: work-pro:local
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      APP_NAME: ${APP_NAME:-Work Pro}
+      VITE_APP_NAME: ${VITE_APP_NAME:-Work Pro}
+      DATA_DIR: /var/data/destrava
+      REQUIRE_PERSISTENT_STORAGE: "true"
+      PERSISTENT_STORAGE_CONFIGURED: "true"
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+      PUPPETEER_BROWSER_PROVIDER: sparticuz
+      HOME: /tmp
+      XDG_CONFIG_HOME: /tmp/.chromium-config
+      XDG_CACHE_HOME: /tmp/.chromium-cache
+    ports:
+      - "4000:4000"
+    volumes:
+      - workpro_data:/var/data/destrava
+      - workpro_logs:/var/log/destrava
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    networks:
+      - workpro
+
+  db:
+    image: postgres:16-alpine
+    profiles:
+      - local-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-workpro}
+      POSTGRES_USER: ${POSTGRES_USER:-workpro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env para usar o PostgreSQL local}
+    volumes:
+      - workpro_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - workpro
+
+volumes:
+  workpro_data:
+  workpro_logs:
+  workpro_pgdata:
+
+networks:
+  workpro:
+    driver: bridge

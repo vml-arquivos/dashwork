@@ -12,11 +12,12 @@ import crypto from "crypto";
 import multer from "multer";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import type { Pool as PgPool } from "pg";
 import { auth, clearSessionCookie, setSessionCookie } from "./middleware/auth.ts";
 import { pool, systemPool } from "./databasePools";
 import createAccountPlatformRouter from './routes/accountPlatform';
 import { getAccountBranding, getCachedAccountBranding } from './services/accountBrandingService';
-import { authorize, requirePermissao } from "./middleware/authorize.ts";
+import { authorize, requirePermissao, requireAccountFeature } from "./middleware/authorize.ts";
 import { setAuditoriaPool, registrarAuditoria, rotaAuditLogs } from "./middleware/auditoria.ts";
 import { getPermissoes, temPermissao, LISTA_CARGOS_VALIDOS, nivelHierarquico, podeGerenciar as _podeGerenciar, cargosGerenciaveis as _cargosGerenciaveis } from "../shared/cargos.ts";
 import cnpjRouter from './routes/cnpj';
@@ -1139,7 +1140,7 @@ async function startServer() {
   // Rota para consulta de CNPJ (proxy para BrasilAPI)
   app.use('/api/cnpj', cnpjRouter);
   app.use('/api', createAccountPlatformRouter());
-  app.use('/api/empresas', sociosDocumentosRouter);
+  app.use('/api/empresas', auth, requireAccountFeature("clientes-pj"), sociosDocumentosRouter);
   app.use('/api/documentacao', documentacaoRouter);
   
   // Rotas de blog, banners e sitemap
@@ -2274,7 +2275,8 @@ async function startServer() {
 
   // body parser, CORS e no-cache já registrados no topo de startServer()
   app.use('/api/documentos', documentosRouter);
-  app.use('/api/orcamentos', auth, createOrcamentosOperacoesRouter(pool));
+  app.use('/api/orcamentos', auth, requireAccountFeature("orcamentos"), createOrcamentosOperacoesRouter(pool));
+  app.use('/api/contratos', auth, requireAccountFeature("contratos"));
   app.use('/api/automation', createAutomationEngineRouter(pool));
 
   // Endpoint de diagnóstico -- pra confirmar em produção, a qualquer momento (não só no
