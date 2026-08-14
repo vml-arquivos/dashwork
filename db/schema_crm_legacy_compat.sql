@@ -3,6 +3,30 @@
 -- canônico usado pelo webhook Chatwoot, preservando todas as linhas existentes.
 -- Seguro para reexecução.
 
+-- Dependência histórica das migrations CRM 005/007. Algumas instalações
+-- legadas nunca receberam schema_integracoes.sql; criar a estrutura completa
+-- de forma aditiva permite preservar o banco e manter as FKs canônicas.
+CREATE TABLE IF NOT EXISTS public.ia_agentes (
+  id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome                   TEXT NOT NULL,
+  descricao              TEXT,
+  modelo                 TEXT NOT NULL DEFAULT 'gpt-4.1-mini',
+  system_prompt          TEXT NOT NULL DEFAULT '',
+  temperatura            NUMERIC(3,2) NOT NULL DEFAULT 0.7,
+  max_tokens             INTEGER NOT NULL DEFAULT 1024,
+  canal                  TEXT NOT NULL DEFAULT 'whatsapp'
+                           CHECK (canal IN ('whatsapp','web','email','todos')),
+  ativo                  BOOLEAN NOT NULL DEFAULT TRUE,
+  responder_fora_horario BOOLEAN NOT NULL DEFAULT FALSE,
+  horario_inicio         TIME DEFAULT '08:00',
+  horario_fim            TIME DEFAULT '18:00',
+  dias_semana            INTEGER[] DEFAULT '{1,2,3,4,5}',
+  escalar_apos_msgs      INTEGER DEFAULT 5,
+  escalar_palavras       TEXT[] DEFAULT '{}',
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 DO $$
 BEGIN
   IF to_regclass('public.crm_eventos_webhook') IS NOT NULL THEN
