@@ -16,6 +16,7 @@ const { Pool } = pkg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrationsDir = join(__dirname, "..", "db", "migrations");
 const migrationFiles = [
+  "001_triagem_leads_create.sql",
   "../schema_crm_legacy_compat.sql",
   "../schema_fase1_blindagem.sql",
   "005_crm_camada_operacional.sql",
