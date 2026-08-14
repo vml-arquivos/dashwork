@@ -53,19 +53,22 @@ async function main() {
   console.log("\n⏳ Gerando hash da senha...");
   const senhaHash = await bcrypt.hash(senha, 12);
 
+  const contaId = process.env.CONTA_ID || process.env.DEFAULT_CONTA_ID || "00000000-0000-4000-8000-000000000001";
+
   console.log("⏳ Inserindo colaborador no banco...");
   try {
     const { rows } = await pool.query(
-      `INSERT INTO colaboradores (nome, email, cargo, senha_hash, ativo)
-       VALUES ($1, $2, $3, $4, TRUE)
+      `INSERT INTO colaboradores (nome, email, cargo, senha_hash, ativo, conta_id)
+       VALUES ($1, $2, $3, $4, TRUE, $5)
        ON CONFLICT (email) DO UPDATE
          SET nome = EXCLUDED.nome,
              cargo = EXCLUDED.cargo,
              senha_hash = EXCLUDED.senha_hash,
+             conta_id = EXCLUDED.conta_id,
              ativo = TRUE,
              updated_at = NOW()
        RETURNING id, nome, email, cargo`,
-      [nome, email, cargo, senhaHash]
+      [nome, email, cargo, senhaHash, contaId]
     );
     const user = rows[0];
     console.log("\n╔══════════════════════════════════════════╗");
