@@ -22,6 +22,7 @@ const migrationFiles = [
   "005_crm_camada_operacional.sql",
   "007_sync_chatwoot_n8n_ia_caixa.sql",
   "013_colaboradores_perfil_operacional.sql",
+  "023_permissao_gestor_credito_acompanhamento.sql",
   "014_chatwoot_base_agente.sql",
   "072_automation_engine.sql",
 ];
