@@ -18,6 +18,8 @@ const migrationsDir = join(__dirname, "..", "db", "migrations");
 const migrationFiles = [
   "../schema_crm_legacy_compat.sql",
   "../schema_fase1_blindagem.sql",
+  "005_crm_camada_operacional.sql",
+  "007_sync_chatwoot_n8n_ia_caixa.sql",
   "013_colaboradores_perfil_operacional.sql",
   "014_chatwoot_base_agente.sql",
   "072_automation_engine.sql",
