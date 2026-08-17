@@ -1058,7 +1058,9 @@ async function startServer() {
   // nessas rotas chegassem com req.body indefinido e sem headers de CORS.
   // Política compatível com o bundle local, GA4 e mapas; bloqueia objetos,
   // framing externo e origens de script não autorizadas.
-  app.use(helmet({
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const requestIsHttps = req.secure || String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() === "https";
+    return helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
@@ -1083,12 +1085,16 @@ async function startServer() {
         ],
         frameSrc: ["'self'", "blob:", "https://www.google.com", "https://maps.google.com", "https://chatwoot.permupay.com.br"],
         workerSrc: ["'self'", "blob:"],
-        ...(process.env.NODE_ENV === "production" ? { upgradeInsecureRequests: [] } : {}),
+        // O acesso IPv4 direto funciona em HTTP quando o DNS/TLS não está disponível.
+        // Só elevar recursos inseguros quando a requisição atual já estiver em HTTPS.
+        ...(requestIsHttps ? { upgradeInsecureRequests: [] } : {}),
       },
     },
+    hsts: requestIsHttps ? undefined : false,
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "same-site" },
-  }));
+    })(req, res, next);
+  });
   app.use((_req: Request, res: Response, next: NextFunction) => {
     res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
     next();
@@ -2395,7 +2401,7 @@ async function startServer() {
         { expiresIn: "24h" }
       );
       console.log(`[LOGIN] Colaborador autenticado: ${user.nome} (${user.email})`);
-      setSessionCookie(res, token);
+      setSessionCookie(res, token, req);
       res.json({
         token,
         user: colaboradorData,
@@ -2407,8 +2413,8 @@ async function startServer() {
     }
   });
 
-  app.post("/api/logout", (_req: Request, res: Response) => {
-    clearSessionCookie(res);
+  app.post("/api/logout", (req: Request, res: Response) => {
+    clearSessionCookie(res, req);
     res.status(204).end();
   });
 

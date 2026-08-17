@@ -11,20 +11,25 @@ function cookieValue(req: Request, name: string) {
   return entry ? decodeURIComponent(entry.slice(name.length + 1)) : null;
 }
 
-export function setSessionCookie(res: Response, token: string) {
+function requestUsesHttps(req?: Request): boolean {
+  if (!req) return process.env.NODE_ENV === "production";
+  return req.secure || String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() === "https";
+}
+
+export function setSessionCookie(res: Response, token: string, req?: Request) {
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: requestUsesHttps(req),
     sameSite: "strict",
     maxAge: 24 * 60 * 60 * 1000,
     path: "/",
   });
 }
 
-export function clearSessionCookie(res: Response) {
+export function clearSessionCookie(res: Response, req?: Request) {
   res.clearCookie(SESSION_COOKIE, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: requestUsesHttps(req),
     sameSite: "strict",
     path: "/",
   });
@@ -82,7 +87,7 @@ export function auth(req: Request, res: Response, next: NextFunction) {
     if (!user.id || !user.role || !user.conta_id) { res.status(401).json({ error: "Token inválido ou incompleto" }); return; }
     req.user = user;
     req.colaborador = user;
-    if (bearerToken) setSessionCookie(res, bearerToken);
+    if (bearerToken) setSessionCookie(res, bearerToken, req);
     runWithTenant(user.conta_id, () => {
       // A identidade é carregada uma vez e mantida em cache. Isso permite que
       // geradores legados síncronos (papel timbrado) usem a marca da conta
