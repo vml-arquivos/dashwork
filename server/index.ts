@@ -1154,8 +1154,110 @@ async function startServer() {
   app.use('/api/blog', blogRoutes);
   app.use('/api/banners', bannerRoutes);
   app.use('/api/sitemap', createSitemapRoutes(pool));
-  const server = createServer(app);
+    const server = createServer(app);
+  // ─── AUTO-CREATE: Orçamentos comerciais / Work Pro ─────────────────────────
+  // A produção pode ter recebido a fundação multiempresa sem a migration 063.
+  // Mantém o endpoint funcional e aplica conta_id/RLS desde a criação, sem
+  // depender de uma execução manual de migrations no container.
+  try {
+    await pool.query(`
+      CREATE EXTENSION IF NOT EXISTS pgcrypto;
+      CREATE TABLE IF NOT EXISTS public.orcamentos_timbrados (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        numero TEXT UNIQUE,
+        tipo_cliente TEXT NOT NULL DEFAULT 'empresa',
+        empresa_id UUID REFERENCES public.empresas(id) ON DELETE SET NULL,
+        cliente_pf_id UUID REFERENCES public.clientes_pf(id) ON DELETE SET NULL,
+        cliente_nome TEXT,
+        cliente_documento TEXT,
+        cliente_email TEXT,
+        cliente_telefone TEXT,
+        marca TEXT NOT NULL DEFAULT 'destrava',
+        titulo TEXT NOT NULL DEFAULT 'Orçamento de Serviços',
+        descricao TEXT,
+        conteudo TEXT NOT NULL DEFAULT '',
+        valor_total NUMERIC(14,2) DEFAULT 0,
+        validade_dias INTEGER DEFAULT 7,
+        validade_ate DATE,
+        status TEXT NOT NULL DEFAULT 'rascunho',
+        assinaturas JSONB NOT NULL DEFAULT '[]'::jsonb,
+        anexos_count INTEGER NOT NULL DEFAULT 0,
+        pdf_path TEXT,
+        payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+        itens JSONB NOT NULL DEFAULT '[]'::jsonb,
+        ocultar_conteudo BOOLEAN NOT NULL DEFAULT false,
+        criado_por UUID REFERENCES public.colaboradores(id) ON DELETE SET NULL,
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        finalizado_em TIMESTAMPTZ,
+        arquivado_em TIMESTAMPTZ,
+        arquivado_por UUID REFERENCES public.colaboradores(id) ON DELETE SET NULL,
+        conta_id UUID NOT NULL DEFAULT public.app_current_conta_id()
+          REFERENCES public.contas_plataforma(id) ON DELETE RESTRICT
+      );
+      ALTER TABLE public.orcamentos_timbrados ADD COLUMN IF NOT EXISTS conta_id UUID;
+      ALTER TABLE public.orcamentos_timbrados ADD COLUMN IF NOT EXISTS itens JSONB NOT NULL DEFAULT '[]'::jsonb;
+      ALTER TABLE public.orcamentos_timbrados ADD COLUMN IF NOT EXISTS ocultar_conteudo BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE public.orcamentos_timbrados ADD COLUMN IF NOT EXISTS arquivado_em TIMESTAMPTZ;
+      ALTER TABLE public.orcamentos_timbrados ADD COLUMN IF NOT EXISTS arquivado_por UUID;
+      UPDATE public.orcamentos_timbrados
+         SET conta_id = COALESCE(conta_id, '00000000-0000-4000-8000-000000000001'::uuid)
+       WHERE conta_id IS NULL;
+      ALTER TABLE public.orcamentos_timbrados ALTER COLUMN conta_id SET DEFAULT public.app_current_conta_id();
+      ALTER TABLE public.orcamentos_timbrados ALTER COLUMN conta_id SET NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_orcamentos_timbrados_conta_id ON public.orcamentos_timbrados(conta_id);
 
+      CREATE TABLE IF NOT EXISTS public.orcamentos_timbrados_anexos (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        orcamento_id UUID NOT NULL REFERENCES public.orcamentos_timbrados(id) ON DELETE CASCADE,
+        tipo TEXT DEFAULT 'anexo',
+        descricao TEXT,
+        nome_original TEXT NOT NULL,
+        mime_type TEXT,
+        tamanho_bytes BIGINT,
+        storage_path TEXT NOT NULL,
+        url TEXT,
+        hash_sha256 TEXT,
+        criado_por UUID REFERENCES public.colaboradores(id) ON DELETE SET NULL,
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        status TEXT NOT NULL DEFAULT 'ativo',
+        incluir_no_pdf BOOLEAN NOT NULL DEFAULT true,
+        arquivado_em TIMESTAMPTZ,
+        arquivado_por UUID REFERENCES public.colaboradores(id) ON DELETE SET NULL,
+        conta_id UUID NOT NULL DEFAULT public.app_current_conta_id()
+          REFERENCES public.contas_plataforma(id) ON DELETE RESTRICT
+      );
+      ALTER TABLE public.orcamentos_timbrados_anexos ADD COLUMN IF NOT EXISTS conta_id UUID;
+      ALTER TABLE public.orcamentos_timbrados_anexos ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'ativo';
+      ALTER TABLE public.orcamentos_timbrados_anexos ADD COLUMN IF NOT EXISTS incluir_no_pdf BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE public.orcamentos_timbrados_anexos ADD COLUMN IF NOT EXISTS arquivado_em TIMESTAMPTZ;
+      ALTER TABLE public.orcamentos_timbrados_anexos ADD COLUMN IF NOT EXISTS arquivado_por UUID;
+      UPDATE public.orcamentos_timbrados_anexos
+         SET conta_id = COALESCE(conta_id, '00000000-0000-4000-8000-000000000001'::uuid)
+       WHERE conta_id IS NULL;
+      ALTER TABLE public.orcamentos_timbrados_anexos ALTER COLUMN conta_id SET DEFAULT public.app_current_conta_id();
+      ALTER TABLE public.orcamentos_timbrados_anexos ALTER COLUMN conta_id SET NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_orcamentos_timbrados_anexos_conta_id ON public.orcamentos_timbrados_anexos(conta_id);
+
+      ALTER TABLE public.orcamentos_timbrados ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE public.orcamentos_timbrados FORCE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS tenant_isolation ON public.orcamentos_timbrados;
+      CREATE POLICY tenant_isolation ON public.orcamentos_timbrados
+        USING (public.app_system_mode() OR conta_id = public.app_current_conta_id())
+        WITH CHECK (public.app_system_mode() OR conta_id = public.app_current_conta_id());
+      ALTER TABLE public.orcamentos_timbrados_anexos ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE public.orcamentos_timbrados_anexos FORCE ROW LEVEL SECURITY;
+      DROP POLICY IF EXISTS tenant_isolation ON public.orcamentos_timbrados_anexos;
+      CREATE POLICY tenant_isolation ON public.orcamentos_timbrados_anexos
+        USING (public.app_system_mode() OR conta_id = public.app_current_conta_id())
+        WITH CHECK (public.app_system_mode() OR conta_id = public.app_current_conta_id());
+      GRANT SELECT, INSERT, UPDATE, DELETE ON public.orcamentos_timbrados TO ritmo_tenant_app;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON public.orcamentos_timbrados_anexos TO ritmo_tenant_app;
+    `);
+    console.log('[startup] Schema Work Pro de orçamentos verificado/criado com RLS tenant.');
+  } catch (err: any) {
+    console.error('[startup] Aviso: falha ao verificar schema Work Pro de orçamentos:', err?.message || err);
+  }
   // ─── AUTO-CREATE: Company Hub / Empresas enriquecidas ──────────────────────
   // Mantém produção resiliente mesmo quando a migration ainda não foi aplicada manualmente.
   try {
@@ -3210,6 +3312,11 @@ async function startServer() {
         res.status(403).json({ error: `Você não tem permissão para criar um colaborador com cargo "${cargo}".` });
         return;
       }
+      const solicitanteContaId = String(solicitante?.conta_id || '').trim();
+      if (!solicitanteContaId) {
+        res.status(401).json({ error: "Conta da sessão não identificada." });
+        return;
+      }
       const senhaHash = await bcrypt.hash(senha, 12);
       const cleanTelefone = telefone ? telefone.replace(/\D/g, '') : null;
       const perfilFinal = perfil || perfilOperacionalPorCargo(cargo);
@@ -3218,11 +3325,26 @@ async function startServer() {
       const chatwootAgenteIdFinal = chatwoot_agente_id !== undefined && chatwoot_agente_id !== null && String(chatwoot_agente_id).trim() !== ''
         ? Number(chatwoot_agente_id)
         : null;
+      const colunas = await getTableColumns("colaboradores");
+      const dados: Record<string, unknown> = {
+        nome: nome.trim(),
+        email: email.trim().toLowerCase(),
+        cargo,
+        senha_hash: senhaHash,
+        ativo: true,
+        telefone: cleanTelefone,
+        perfil: perfilFinal,
+        pode_atender_leads: podeAtenderLeadsFinal,
+        pode_ver_todos_leads: podeVerTodosLeadsFinal,
+        chatwoot_agente_id: chatwootAgenteIdFinal,
+        conta_id: solicitanteContaId,
+      };
+      const entries = Object.entries(dados).filter(([key]) => colunas.has(key));
+      const fields = entries.map(([key]) => `"${key}"`).join(', ');
+      const placeholders = entries.map((_, index) => `$${index + 1}`).join(', ');
       const { rows } = await pool.query(
-        `INSERT INTO colaboradores (nome, email, cargo, senha_hash, ativo, telefone, perfil, pode_atender_leads, pode_ver_todos_leads, chatwoot_agente_id)
-         VALUES ($1, $2, $3, $4, true, $5, $6, $7, $8, $9)
-         RETURNING id`,
-        [nome.trim(), email.trim().toLowerCase(), cargo, senhaHash, cleanTelefone, perfilFinal, podeAtenderLeadsFinal, podeVerTodosLeadsFinal, chatwootAgenteIdFinal]
+        `INSERT INTO colaboradores (${fields}) VALUES (${placeholders}) RETURNING id`,
+        entries.map(([, value]) => value),
       );
       const userId = rows[0].id;
       console.log(`[COLAB] Colaborador criado: ${nome} (${email}) cargo=${cargo}`);
@@ -3243,61 +3365,42 @@ async function startServer() {
       const solicitante = (req as Request & { colaborador: any }).colaborador;
       const cargoSolicitante = solicitante?.cargo || '';
       const nivelSolicitante = nivelCargo(cargoSolicitante);
+      const contaId = String(solicitante?.conta_id || '').trim();
+      if (!contaId) {
+        res.status(401).json({ error: "Conta da sessão não identificada." });
+        return;
+      }
 
-      // COALESCE garante compatibilidade com schemas que usam created_at ou criado_em
+      // Os campos opcionais são lidos via JSONB para compatibilidade com bancos
+      // legados que ainda não possuem telefone, criado_em ou flags operacionais.
       const { rows } = await pool.query(
-        `SELECT id, email, nome, cargo, telefone, ativo, chatwoot_agente_id,
-                COALESCE(perfil, CASE
-                  WHEN LOWER(COALESCE(cargo, '')) IN ('administrador', 'admin', 'diretor') THEN 'admin'
-                  WHEN LOWER(COALESCE(cargo, '')) IN ('gerente comercial', 'gerente', 'gestor') THEN 'gestor'
-                  WHEN LOWER(COALESCE(cargo, '')) IN ('analista de crédito', 'analista de credito', 'analista') THEN 'analista'
+        `SELECT c.id, c.email, c.nome, c.cargo, c.ativo,
+                to_jsonb(c)->>'telefone' AS telefone,
+                to_jsonb(c)->>'chatwoot_agente_id' AS chatwoot_agente_id,
+                COALESCE(to_jsonb(c)->>'perfil', CASE
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('administrador', 'admin', 'diretor') THEN 'admin'
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('gerente comercial', 'gerente', 'gestor') THEN 'gestor'
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('analista de crédito', 'analista de credito', 'analista') THEN 'analista'
                   ELSE 'agente'
                 END) AS perfil,
-                COALESCE(pode_atender_leads, CASE WHEN LOWER(COALESCE(cargo, '')) IN ('captador externo', 'estagiário', 'estagiario') THEN FALSE ELSE TRUE END) AS pode_atender_leads,
-                COALESCE(pode_ver_todos_leads, CASE
-                  WHEN LOWER(COALESCE(cargo, '')) IN ('administrador', 'admin', 'diretor', 'gerente comercial', 'gerente', 'gestor') THEN TRUE
-                  ELSE FALSE
-                END) AS pode_ver_todos_leads,
-                COALESCE(created_at, criado_em, NOW()) AS created_at
-         FROM colaboradores ORDER BY nome`
+                COALESCE(NULLIF(to_jsonb(c)->>'pode_atender_leads', '')::boolean,
+                  CASE WHEN LOWER(COALESCE(c.cargo, '')) IN ('captador externo', 'estagiário', 'estagiario') THEN FALSE ELSE TRUE END) AS pode_atender_leads,
+                COALESCE(NULLIF(to_jsonb(c)->>'pode_ver_todos_leads', '')::boolean,
+                  CASE WHEN LOWER(COALESCE(c.cargo, '')) IN ('administrador', 'admin', 'diretor', 'gerente comercial', 'gerente', 'gestor') THEN TRUE ELSE FALSE END) AS pode_ver_todos_leads,
+                COALESCE(to_jsonb(c)->>'created_at', to_jsonb(c)->>'criado_em', NOW()::text) AS created_at
+           FROM colaboradores c
+          WHERE c.conta_id = $1
+          ORDER BY c.nome`,
+        [contaId],
       );
 
-      // Filtra: Administrador vê todos; demais veem apenas cargos de nível inferior
       const filtrados = nivelSolicitante === 0
         ? rows
         : rows.filter(r => nivelCargo(r.cargo) > nivelSolicitante);
-
       res.json(filtrados);
     } catch (err) {
       console.error("[COLAB GET ERROR]", err);
-      // Fallback: tenta sem o campo de timestamp para não quebrar a listagem
-      try {
-        const solicitante = (req as Request & { colaborador: any }).colaborador;
-        const cargoSolicitante = solicitante?.cargo || '';
-        const nivelSolicitante = nivelCargo(cargoSolicitante);
-        const { rows } = await pool.query(
-          `SELECT id, email, nome, cargo, telefone, ativo, chatwoot_agente_id,
-                  COALESCE(perfil, CASE
-                    WHEN LOWER(COALESCE(cargo, '')) IN ('administrador', 'admin', 'diretor') THEN 'admin'
-                    WHEN LOWER(COALESCE(cargo, '')) IN ('gerente comercial', 'gerente', 'gestor') THEN 'gestor'
-                    WHEN LOWER(COALESCE(cargo, '')) IN ('analista de crédito', 'analista de credito', 'analista') THEN 'analista'
-                    ELSE 'agente'
-                  END) AS perfil,
-                  COALESCE(pode_atender_leads, CASE WHEN LOWER(COALESCE(cargo, '')) IN ('captador externo', 'estagiário', 'estagiario') THEN FALSE ELSE TRUE END) AS pode_atender_leads,
-                  COALESCE(pode_ver_todos_leads, CASE
-                    WHEN LOWER(COALESCE(cargo, '')) IN ('administrador', 'admin', 'diretor', 'gerente comercial', 'gerente', 'gestor') THEN TRUE
-                    ELSE FALSE
-                  END) AS pode_ver_todos_leads
-             FROM colaboradores ORDER BY nome`
-        );
-        const filtrados = nivelSolicitante === 0
-          ? rows
-          : rows.filter(r => nivelCargo(r.cargo) > nivelSolicitante);
-        res.json(filtrados.map(r => ({ ...r, created_at: null })));
-      } catch (err2) {
-        console.error("[COLAB GET FALLBACK ERROR]", err2);
-        res.status(500).json({ error: "Erro ao buscar colaboradores." });
-      }
+      res.status(500).json({ error: "Erro ao buscar colaboradores." });
     }
   });
 
@@ -3305,18 +3408,25 @@ async function startServer() {
 
   // GET /api/colaboradores/para-empresa — retorna listas separadas para os selects do formulário de empresa
   // NOTA: rota declarada ANTES do patch /:id para evitar conflito de parâmetro de rota
-  app.get("/api/colaboradores/para-empresa", auth, async (_req: Request, res: Response) => {
+  app.get("/api/colaboradores/para-empresa", auth, async (req: Request, res: Response) => {
     try {
+      const solicitante = (req as Request & { colaborador: any }).colaborador;
+      const contaId = String(solicitante?.conta_id || '').trim();
+      if (!contaId) {
+        res.status(401).json({ error: "Conta da sessão não identificada." });
+        return;
+      }
       const { rows } = await pool.query(
-        "SELECT id, nome, cargo FROM colaboradores WHERE ativo = true ORDER BY nome"
+        "SELECT id, nome, cargo FROM colaboradores WHERE conta_id = $1 AND ativo = true ORDER BY nome",
+        [contaId],
       );
       // Responsáveis pela captação: qualquer cargo exceto Analista de Crédito e Estagiário
       const captacao = rows.filter(c =>
-        !['analista de crédito', 'analista de credito', 'estagiário', 'estagiario'].includes(c.cargo.toLowerCase())
+        !['analista de crédito', 'analista de credito', 'estagiário', 'estagiario'].includes(String(c.cargo || '').toLowerCase())
       );
       // Responsáveis pelo atendimento: qualquer cargo exceto Captador Externo e Estagiário
       const atendimento = rows.filter(c =>
-        !CARGOS_BLOQUEADOS_ATENDIMENTO.includes(c.cargo.toLowerCase())
+        !CARGOS_BLOQUEADOS_ATENDIMENTO.includes(String(c.cargo || '').toLowerCase())
       );
       res.json({ captacao, atendimento });
     } catch (err) {
@@ -3330,10 +3440,16 @@ async function startServer() {
       const solicitante = (req as Request & { colaborador: any }).colaborador;
       const cargoSolicitante = solicitante?.cargo || '';
 
-      // Busca o cargo atual do alvo para verificar hierarquia
+      const contaId = String(solicitante?.conta_id || '').trim();
+      if (!contaId) {
+        res.status(401).json({ error: "Conta da sessão não identificada." });
+        return;
+      }
+
+      // Busca o cargo atual do alvo dentro da mesma conta para verificar hierarquia.
       const alvoResult = await pool.query(
-        "SELECT id, cargo FROM colaboradores WHERE id = $1",
-        [req.params.id]
+        "SELECT id, cargo FROM colaboradores WHERE id = $1 AND conta_id = $2",
+        [req.params.id, contaId]
       );
       if (!alvoResult.rows[0]) {
         res.status(404).json({ error: "Colaborador não encontrado." });
@@ -3355,27 +3471,43 @@ async function startServer() {
         return;
       }
 
-      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      const colunas = await getTableColumns("colaboradores");
+      const updates: Record<string, unknown> = {};
+      if (colunas.has("updated_at")) updates.updated_at = new Date().toISOString();
       const cargoFinal = cargo || cargoAlvo;
-      if (nome) updates.nome = nome.trim();
-      if (email) updates.email = email.trim().toLowerCase();
-      if (cargo) updates.cargo = cargo;
-      if (ativo !== undefined) updates.ativo = ativo;
-      if (senha) updates.senha_hash = await bcrypt.hash(senha, 12);
-      if (telefone !== undefined) updates.telefone = telefone ? telefone.replace(/\D/g, '') : null;
-      if (chatwoot_agente_id !== undefined) updates.chatwoot_agente_id = chatwoot_agente_id !== null && String(chatwoot_agente_id).trim() !== '' ? Number(chatwoot_agente_id) : null;
-      if (perfil !== undefined) updates.perfil = perfil || perfilOperacionalPorCargo(cargoFinal);
-      else if (cargo !== undefined) updates.perfil = perfilOperacionalPorCargo(cargoFinal);
-      if (pode_atender_leads !== undefined) updates.pode_atender_leads = pode_atender_leads;
-      else if (cargo !== undefined) updates.pode_atender_leads = podeAtenderLeadsPorCargo(cargoFinal);
-      if (pode_ver_todos_leads !== undefined) updates.pode_ver_todos_leads = pode_ver_todos_leads;
-      else if (cargo !== undefined || perfil !== undefined) updates.pode_ver_todos_leads = podeVerTodosLeadsPorPerfilOuCargo(String(updates.perfil || perfil || ''), cargoFinal);
+      const definir = (campo: string, valor: unknown) => {
+        if (colunas.has(campo)) updates[campo] = valor;
+      };
+      if (nome) definir("nome", nome.trim());
+      if (email) definir("email", email.trim().toLowerCase());
+      if (cargo) definir("cargo", cargo);
+      if (ativo !== undefined) definir("ativo", ativo);
+      if (senha) definir("senha_hash", await bcrypt.hash(senha, 12));
+      if (telefone !== undefined) definir("telefone", telefone ? telefone.replace(/\D/g, '') : null);
+      if (chatwoot_agente_id !== undefined) definir("chatwoot_agente_id", chatwoot_agente_id !== null && String(chatwoot_agente_id).trim() !== '' ? Number(chatwoot_agente_id) : null);
+      if (perfil !== undefined) definir("perfil", perfil || perfilOperacionalPorCargo(cargoFinal));
+      else if (cargo !== undefined) definir("perfil", perfilOperacionalPorCargo(cargoFinal));
+      if (pode_atender_leads !== undefined) definir("pode_atender_leads", pode_atender_leads);
+      else if (cargo !== undefined) definir("pode_atender_leads", podeAtenderLeadsPorCargo(cargoFinal));
+      if (pode_ver_todos_leads !== undefined) definir("pode_ver_todos_leads", pode_ver_todos_leads);
+      else if (cargo !== undefined || perfil !== undefined) definir("pode_ver_todos_leads", podeVerTodosLeadsPorPerfilOuCargo(String(updates.perfil || perfil || ''), cargoFinal));
       const keys = Object.keys(updates);
+      if (!keys.length) {
+        res.status(400).json({ error: "Nenhum campo válido para atualizar." });
+        return;
+      }
       const values = Object.values(updates);
       const set = keys.map((k, i) => `"${k}" = $${i + 1}`).join(", ");
       const { rows } = await pool.query(
-        `UPDATE colaboradores SET ${set} WHERE id = $${keys.length + 1} RETURNING id, nome, email, cargo, telefone, ativo, perfil, pode_atender_leads, pode_ver_todos_leads, chatwoot_agente_id`,
-        [...values, req.params.id]
+        `UPDATE colaboradores AS c SET ${set}
+          WHERE c.id = $${keys.length + 1} AND c.conta_id = $${keys.length + 2}
+          RETURNING c.id, c.nome, c.email, c.cargo, c.ativo,
+                    to_jsonb(c)->>'telefone' AS telefone,
+                    to_jsonb(c)->>'perfil' AS perfil,
+                    to_jsonb(c)->>'pode_atender_leads' AS pode_atender_leads,
+                    to_jsonb(c)->>'pode_ver_todos_leads' AS pode_ver_todos_leads,
+                    to_jsonb(c)->>'chatwoot_agente_id' AS chatwoot_agente_id`,
+        [...values, req.params.id, contaId]
       );
       res.json({ success: true, colaborador: rows[0] });
     } catch (err) {
@@ -4756,7 +4888,14 @@ async function startServer() {
   app.get("/api/empresas", auth, async (req: Request, res: Response) => {
     try {
       const colaborador = (req as Request & { colaborador: any }).colaborador;
+      const contaId = String(colaborador?.conta_id || '').trim();
+      if (!contaId) {
+        res.status(401).json({ error: "Conta da sessão não identificada." });
+        return;
+      }
       const isGestor = isGestorCargo(colaborador?.cargo || '');
+      const empresaColumns = await getTableColumns("empresas");
+      const has = (name: string) => empresaColumns.has(name);
       const busca = req.query.busca as string | undefined;
       const status = req.query.status as string | undefined;
       const origem = req.query.origem as string | undefined;
@@ -4764,33 +4903,39 @@ async function startServer() {
       const responsavelId = req.query.responsavel_id as string | undefined;
       const cidade = req.query.cidade as string | undefined;
       const estado = req.query.estado as string | undefined;
-      const params: any[] = [];
-      const conditions: string[] = [];
+      const params: any[] = [contaId];
+      const conditions: string[] = ["e.conta_id = $1"];
       if (!isGestor && colaborador?.id) {
-        params.push(colaborador.id);
-        conditions.push(`(e.responsavel_id = $${params.length} OR e.analista_id = $${params.length})`);
+        const visibilidade: string[] = [];
+        if (has("responsavel_id")) visibilidade.push(`e.responsavel_id = $${params.length + 1}`);
+        if (has("analista_id")) visibilidade.push(`e.analista_id = $${params.length + 1}`);
+        if (has("captador_id")) visibilidade.push(`e.captador_id = $${params.length + 1}`);
+        if (visibilidade.length) {
+          params.push(colaborador.id);
+          conditions.push(`(${visibilidade.join(" OR ")})`);
+        }
       }
-      if (status && status !== "todos") {
+      if (status && status !== "todos" && has("status")) {
         params.push(status);
         conditions.push(`e.status = $${params.length}`);
       }
-      if (origem && origem !== "todos") {
+      if (origem && origem !== "todos" && has("origem")) {
         params.push(`%${origem}%`);
         conditions.push(`COALESCE(e.origem, '') ILIKE $${params.length}`);
       }
-      if (porte && porte !== "todos") {
+      if (porte && porte !== "todos" && has("porte")) {
         params.push(porte);
         conditions.push(`e.porte = $${params.length}`);
       }
-      if (responsavelId) {
+      if (responsavelId && has("responsavel_id")) {
         params.push(responsavelId);
         conditions.push(`e.responsavel_id = $${params.length}`);
       }
-      if (cidade && cidade.trim()) {
+      if (cidade && cidade.trim() && has("cidade")) {
         params.push(`%${cidade.trim()}%`);
         conditions.push(`e.cidade ILIKE $${params.length}`);
       }
-      if (estado && estado.trim()) {
+      if (estado && estado.trim() && has("estado")) {
         params.push(estado.trim().toUpperCase());
         conditions.push(`UPPER(e.estado) = $${params.length}`);
       }
@@ -4798,27 +4943,35 @@ async function startServer() {
         const term = `%${busca.trim()}%`;
         params.push(term);
         const idx = params.length;
-        conditions.push(`(e.razao_social ILIKE $${idx} OR e.nome_fantasia ILIKE $${idx} OR e.cnpj ILIKE $${idx} OR e.responsavel_nome ILIKE $${idx} OR e.telefone ILIKE $${idx})`);
+        const buscaParts = ["e.razao_social", "e.nome_fantasia", "e.cnpj", "e.responsavel_nome", "e.telefone"]
+          .filter((column) => has(column.slice(2)))
+          .map((column) => `${column} ILIKE $${idx}`);
+        if (buscaParts.length) conditions.push(`(${buscaParts.join(" OR ")})`);
+        else params.pop();
       }
       const incluirIncompletos = ["1", "true", "sim"].includes(String(req.query.incluir_incompletos || "").toLowerCase());
       if (!incluirIncompletos) {
-        conditions.push(`COALESCE(e.arquivado_por_duplicidade, false) = false`);
-        conditions.push(`COALESCE(e.bloqueado_operacional, false) = false`);
-        // cadastro_completo NÃO é mais exigido aqui: faltar dado opcional da Receita
-        // (CNAE/natureza jurídica/capital social/situação cadastral) não pode esconder
-        // a empresa da lista principal de Clientes PJ. Só empresa duplicada/arquivada
-        // fica de fora -- ver condições acima.
+        if (has("arquivado_por_duplicidade")) conditions.push(`COALESCE(e.arquivado_por_duplicidade, false) = false`);
+        if (has("bloqueado_operacional")) conditions.push(`COALESCE(e.bloqueado_operacional, false) = false`);
       }
-      const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      const joins: string[] = [];
+      const selectNames: string[] = [];
+      if (has("captador_id")) {
+        joins.push("LEFT JOIN colaboradores cap ON cap.id = e.captador_id AND cap.conta_id = e.conta_id");
+        selectNames.push("cap.nome AS captador_nome");
+      }
+      if (has("analista_id")) {
+        joins.push("LEFT JOIN colaboradores ana ON ana.id = e.analista_id AND ana.conta_id = e.conta_id");
+        selectNames.push("ana.nome AS analista_nome");
+      }
+      const where = `WHERE ${conditions.join(" AND ")}`;
       const { rows } = await pool.query(
-        `SELECT e.*,
-                cap.nome AS captador_nome,
-                ana.nome AS analista_nome
-         FROM empresas e
-         LEFT JOIN colaboradores cap ON cap.id = e.captador_id
-         LEFT JOIN colaboradores ana ON ana.id = e.analista_id
-         ${where} ORDER BY e.razao_social ASC`,
-        params
+        `SELECT e.*${selectNames.length ? `, ${selectNames.join(", ")}` : ""}
+           FROM empresas e
+           ${joins.join("\n           ")}
+           ${where}
+          ORDER BY e.razao_social ASC`,
+        params,
       );
       res.json(rows);
     } catch (err) {
