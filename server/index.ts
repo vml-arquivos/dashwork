@@ -246,6 +246,14 @@ function perfilOperacionalPorCargo(cargo: string | null | undefined): 'admin' | 
   return 'agente';
 }
 
+function isPlatformAdminEmail(email: string | null | undefined, contaId?: string | null, cargo?: string | null): boolean {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const configured = new Set(String(process.env.PLATFORM_ADMIN_EMAILS || "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean));
+  if (configured.has(normalizedEmail)) return true;
+  const defaultAccountId = process.env.DEFAULT_CONTA_ID || LEGACY_DEFAULT_CONTA_ID;
+  return String(contaId || "") === String(defaultAccountId) && ["administrador", "admin"].includes(String(cargo || "").trim().toLowerCase());
+}
+
 function podeAtenderLeadsPorCargo(cargo: string | null | undefined): boolean {
   return !CARGOS_BLOQUEADOS_ATENDIMENTO.includes((cargo || '').toLowerCase());
 }
@@ -1162,6 +1170,34 @@ async function startServer() {
   app.use('/api/banners', bannerRoutes);
   app.use('/api/sitemap', createSitemapRoutes(pool));
     const server = createServer(app);
+  // ─── AUTO-CREATE: Central de Empresas e Acessos ────────────────────────────
+  // Evolução idempotente da conta da plataforma: o painel financeiro atual é o
+  // padrão das empresas financeiras; outros ramos podem receber pacotes próprios.
+  try {
+    await pool.query(`
+      ALTER TABLE public.contas_plataforma
+        ADD COLUMN IF NOT EXISTS ramo_atuacao TEXT NOT NULL DEFAULT 'financeiro',
+        ADD COLUMN IF NOT EXISTS painel_base TEXT NOT NULL DEFAULT 'financeiro_atual',
+        ADD COLUMN IF NOT EXISTS administrador_nome TEXT,
+        ADD COLUMN IF NOT EXISTS administrador_email TEXT;
+      UPDATE public.contas_plataforma
+         SET ramo_atuacao = CASE
+               WHEN perfil_base IN ('credito_contabil', 'financeiro') THEN 'financeiro'
+               WHEN ramo_atuacao IS NULL OR ramo_atuacao = '' THEN perfil_base
+               ELSE ramo_atuacao
+             END,
+             painel_base = CASE
+               WHEN perfil_base IN ('credito_contabil', 'financeiro') THEN 'financeiro_atual'
+               WHEN painel_base IS NULL OR painel_base = '' THEN 'pacote_modular'
+               ELSE painel_base
+             END
+       WHERE ramo_atuacao IS NULL OR ramo_atuacao = '' OR painel_base IS NULL OR painel_base = '';
+    `);
+    console.log('[startup] Central de Empresas: schema de ramo/painel OK.');
+  } catch (err: any) {
+    console.warn('[startup] Central de Empresas:', err?.message);
+  }
+
   // ─── AUTO-CREATE: Orçamentos comerciais / Work Pro ─────────────────────────
   // A produção pode ter recebido a fundação multiempresa sem a migration 063.
   // Mantém o endpoint funcional e aplica conta_id/RLS desde a criação, sem
@@ -2476,7 +2512,7 @@ async function startServer() {
       }
       const result = await systemPool.query(
         `SELECT c.id, c.email, c.nome, c.cargo, c.senha_hash, c.ativo, c.chatwoot_agente_id,
-                c.conta_id, cp.nome AS conta_nome, cp.perfil_base AS conta_perfil, cp.status AS conta_status, cp.modulos_ativos,
+                c.conta_id, cp.nome AS conta_nome, cp.perfil_base AS conta_perfil, cp.ramo_atuacao, cp.painel_base, cp.status AS conta_status, cp.modulos_ativos,
                 COALESCE(NULLIF(to_jsonb(c)->>'atividade', ''), 'administrativo') AS atividade,
                 COALESCE(NULLIF(to_jsonb(c)->>'modulos_ativos', '')::jsonb, '[]'::jsonb) AS modulos_usuario,
                 COALESCE(c.acesso_acompanhamento_bancario, false) AS acesso_acompanhamento_bancario,
@@ -2518,7 +2554,7 @@ async function startServer() {
         cargo: user.cargo,
         atividade,
         atividade_label: activityDefinition.label,
-        dashboard_inicial: activityDefinition.dashboardPath,
+        dashboard_inicial: user.painel_base === 'financeiro_atual' ? '/colaborador/dashboard' : activityDefinition.dashboardPath,
         perfil: user.perfil || perfilOperacionalPorCargo(user.cargo),
         pode_atender_leads: user.pode_atender_leads ?? podeAtenderLeadsPorCargo(user.cargo),
         pode_ver_todos_leads: user.pode_ver_todos_leads ?? podeVerTodosLeadsPorPerfilOuCargo(user.perfil, user.cargo),
@@ -2526,6 +2562,9 @@ async function startServer() {
         acesso_acompanhamento_bancario: user.acesso_acompanhamento_bancario ?? false,
         ativo: user.ativo,
         conta_id: user.conta_id, conta_nome: user.conta_nome, conta_perfil: user.conta_perfil,
+        ramo_atuacao: user.ramo_atuacao || user.conta_perfil || 'financeiro',
+        painel_base: user.painel_base || (user.conta_perfil === 'financeiro' || user.conta_perfil === 'credito_contabil' ? 'financeiro_atual' : 'pacote_modular'),
+        is_platform_admin: isPlatformAdminEmail(user.email, user.conta_id, user.cargo),
         modulos_ativos: modulosAtivosUsuario,
       };
       const token = jwt.sign(
@@ -2540,6 +2579,9 @@ async function startServer() {
           chatwoot_agente_id: colaboradorData.chatwoot_agente_id,
           acesso_acompanhamento_bancario: colaboradorData.acesso_acompanhamento_bancario,
           conta_id: user.conta_id, conta_nome: user.conta_nome, conta_perfil: user.conta_perfil,
+          ramo_atuacao: user.ramo_atuacao || user.conta_perfil || 'financeiro',
+          painel_base: user.painel_base || (user.conta_perfil === 'financeiro' || user.conta_perfil === 'credito_contabil' ? 'financeiro_atual' : 'pacote_modular'),
+          is_platform_admin: isPlatformAdminEmail(user.email, user.conta_id, user.cargo),
         },
         process.env.JWT_SECRET!,
         { expiresIn: "24h" }
@@ -3647,6 +3689,8 @@ async function startServer() {
                 COALESCE(c.conta_id, $2::uuid) AS conta_id,
                 cp.nome AS conta_nome,
                 cp.perfil_base AS conta_perfil,
+                cp.ramo_atuacao,
+                cp.painel_base,
                 cp.modulos_ativos,
                 CASE
                   WHEN LOWER(COALESCE(to_jsonb(c)->>'acesso_acompanhamento_bancario', '')) IN ('true', 't', '1') THEN TRUE
@@ -3691,9 +3735,12 @@ async function startServer() {
         ...user,
         atividade,
         atividade_label: activityDefinition.label,
-        dashboard_inicial: activityDefinition.dashboardPath,
+        dashboard_inicial: user.painel_base === 'financeiro_atual' ? '/colaborador/dashboard' : activityDefinition.dashboardPath,
         modulos_ativos: modulosAtivos,
         perfil,
+        ramo_atuacao: user.ramo_atuacao || user.conta_perfil || 'financeiro',
+        painel_base: user.painel_base || (user.conta_perfil === 'financeiro' || user.conta_perfil === 'credito_contabil' ? 'financeiro_atual' : 'pacote_modular'),
+        is_platform_admin: isPlatformAdminEmail(user.email, user.conta_id, user.cargo),
         pode_atender_leads: user.pode_atender_leads ?? podeAtenderLeadsPorCargo(user.cargo),
         pode_ver_todos_leads: podeVerTudo,
         permissoes: {

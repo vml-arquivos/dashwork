@@ -52,6 +52,8 @@ interface NavItem {
   allowedCargos?: string[];
   badge?: string;
   featureKey?: string;
+  platformOnly?: boolean;
+  companyOnly?: boolean;
 }
 interface NavModule {
   id: string;
@@ -254,24 +256,33 @@ const NAV_MODULES: NavModule[] = [
         allowedCargos: CARGOS_GESTAO,
       },
       {
+        href: "/colaborador/central-empresas",
+        label: "Central de Empresas",
+        icon: Building2,
+        platformOnly: true,
+      },
+      {
         href: "/colaborador/usuarios",
-        label: "Usuários",
+        label: "Usuários da empresa",
         icon: UserCog,
         allowedCargos: CARGOS_GESTAO,
+        companyOnly: true,
         featureKey: "usuarios",
       },
       {
         href: "/colaborador/personalizacao",
-        label: "Personalização da Conta",
+        label: "Identidade da Empresa",
         icon: Building2,
         allowedCargos: CARGOS_GESTAO,
+        companyOnly: true,
         featureKey: "personalizacao",
       },
       {
         href: "/colaborador/configuracao-funcoes",
-        label: "Menu e Funções",
+        label: "Menu e Funções da Empresa",
         icon: SlidersHorizontal,
         allowedCargos: ["administrador"],
+        companyOnly: true,
         featureKey: "configuracao-funcoes",
       },
     ],
@@ -300,6 +311,8 @@ function filtrarItems(
   isFeatureEnabled: (featureKey?: string | null) => boolean
 ) {
   return items.filter(item => {
+    if (item.platformOnly && !colab?.is_platform_admin) return false;
+    if (item.companyOnly && colab?.is_platform_admin) return false;
     if (
       item.allowedCargos &&
       !item.allowedCargos.includes((colab?.cargo || "").toLowerCase())

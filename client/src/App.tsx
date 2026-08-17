@@ -119,6 +119,22 @@ function PageLoader() {
   );
 }
 
+function PlatformAdminGate({ children }: { children: React.ReactNode }) {
+  const { colaborador } = useAuth();
+  if (colaborador?.is_platform_admin) return <>{children}</>;
+  return (
+    <Layout title="Acesso restrito">
+      <div className="min-h-full bg-slate-50 p-6">
+        <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.25em] text-teal-700">Ambiente da empresa</div>
+          <h1 className="mt-2 text-2xl font-black text-slate-950">Central exclusiva da plataforma</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-600">A Central de Empresas e Acessos é usada apenas pelo operador do Work Pro. Você está no ambiente da sua empresa e deve utilizar o dashboard e os módulos liberados para ela.</p>
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
 function ColaboradorEntry() {
   const { colaborador } = useAuth();
   const [, setLocation] = useLocation();
@@ -230,8 +246,11 @@ function Router() {
       <Route path="/colaborador/personalizacao">
         {() => (<ProtectedRoute><CargoRoute allowedCargos={["administrador","diretor","gerente comercial"]}><FeatureGate featureKey="personalizacao"><PersonalizacaoConta /></FeatureGate></CargoRoute></ProtectedRoute>)}
       </Route>
+      <Route path="/colaborador/central-empresas">
+        {() => (<ProtectedRoute><PlatformAdminGate><ContasPlataforma /></PlatformAdminGate></ProtectedRoute>)}
+      </Route>
       <Route path="/colaborador/contas-plataforma">
-        {() => (<ProtectedRoute><CargoRoute allowedCargos={["administrador"]}><ContasPlataforma /></CargoRoute></ProtectedRoute>)}
+        {() => (<ProtectedRoute><PlatformAdminGate><ContasPlataforma /></PlatformAdminGate></ProtectedRoute>)}
       </Route>
       <Route path="/colaborador/gestao-blog">
         {() => (

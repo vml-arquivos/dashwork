@@ -28,6 +28,9 @@ export type Colaborador = {
   conta_nome?: string;
   conta_perfil?: string;
   conta_modulos?: string[];
+  ramo_atuacao?: string;
+  painel_base?: string;
+  is_platform_admin?: boolean;
   modulos_ativos?: string[];
   atividade?: string;
   atividade_label?: string;

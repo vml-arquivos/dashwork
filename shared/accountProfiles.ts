@@ -1,5 +1,6 @@
 export type AccountProfileKey =
   | "credito_contabil"
+  | "financeiro"
   | "contabil"
   | "assessoria_credito"
   | "servicos"
@@ -8,7 +9,8 @@ export type AccountProfileKey =
   | "consultoria";
 
 export const ACCOUNT_PROFILE_LABELS: Record<AccountProfileKey, string> = {
-  credito_contabil: "Crédito + Contábil (base Destrava)",
+  credito_contabil: "Financeiro completo (compatibilidade)",
+  financeiro: "Financeiro (painel atual)",
   contabil: "Contábil",
   assessoria_credito: "Assessoria de crédito",
   servicos: "Prestação de serviços",
@@ -30,8 +32,11 @@ const CREDITOS = [
   "contadores", "integracoes",
 ];
 
+/** Pacote usado pela Central de Empresas para definir o painel de cada conta. */
 export const ACCOUNT_PROFILE_MODULES: Record<AccountProfileKey, string[]> = {
+  // Mantido como alias técnico para contas antigas; a interface exibe Financeiro completo.
   credito_contabil: [...BASE_PRODUTIVIDADE, ...CREDITOS],
+  financeiro: [...BASE_PRODUTIVIDADE, ...CREDITOS],
   contabil: [...BASE_PRODUTIVIDADE, "relatorios-pj", "faturamento", "contadores"],
   assessoria_credito: [...BASE_PRODUTIVIDADE, ...CREDITOS],
   servicos: [...BASE_PRODUTIVIDADE],
@@ -46,3 +51,8 @@ export function modulesForAccountProfile(profile: string): string[] {
 }
 
 export const ACCOUNT_CONTROLLED_FEATURES = Array.from(new Set([...BASE_PRODUTIVIDADE, ...CREDITOS]));
+
+export const ACCOUNT_BRANCH_OPTIONS = Object.entries(ACCOUNT_PROFILE_LABELS).map(([value, label]) => ({
+  value: value as AccountProfileKey,
+  label,
+}));
