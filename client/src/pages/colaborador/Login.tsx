@@ -10,7 +10,7 @@ import { Loader2, Lock, Mail, Shield } from "lucide-react";
 const PLATFORM_NAME = import.meta.env.VITE_APP_NAME || "Work Pro";
 
 export default function ColaboradorLogin() {
-  const { signIn, isAuthenticated } = useAuth();
+  const { signIn, isAuthenticated, colaborador } = useAuth();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +19,7 @@ export default function ColaboradorLogin() {
 
   // Se já autenticado, redireciona
   if (isAuthenticated) {
-    setLocation("/colaborador/dashboard");
+    setLocation(colaborador?.dashboard_inicial || "/colaborador/dashboard");
     return null;
   }
 
@@ -44,7 +44,7 @@ export default function ColaboradorLogin() {
       return;
     }
 
-    setLocation("/colaborador/dashboard");
+    setLocation("/colaborador");
   };
 
   return (

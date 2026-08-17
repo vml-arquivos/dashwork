@@ -28,6 +28,10 @@ export type Colaborador = {
   conta_nome?: string;
   conta_perfil?: string;
   conta_modulos?: string[];
+  modulos_ativos?: string[];
+  atividade?: string;
+  atividade_label?: string;
+  dashboard_inicial?: string;
   created_at?: string;
   pode_atender_leads?: boolean;
   pode_ver_todos_leads?: boolean;

@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch } from "wouter";
-import { lazy, Suspense } from "react";
+import { Route, Switch, useLocation } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -9,7 +9,8 @@ import CargoRoute from "./components/CargoRoute";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { AnalyticsObserver } from "@/lib/analytics";
 import { RouteSeoDefaults } from "@/components/SEO";
-import ConsentBanner from "@/components/ConsentBanner";
+import ConsentBanner from "./components/ConsentBanner";
+import { useAuth } from "./contexts/AuthContext";
 
 const Home = lazy(() => import("./pages/Home"));
 const Sobre = lazy(() => import("./pages/Sobre"));
@@ -116,6 +117,18 @@ function PageLoader() {
       <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#0033A0]" aria-hidden="true" />
     </div>
   );
+}
+
+function ColaboradorEntry() {
+  const { colaborador } = useAuth();
+  const [, setLocation] = useLocation();
+  const dashboard = colaborador?.dashboard_inicial || "/colaborador/dashboard";
+
+  useEffect(() => {
+    setLocation(dashboard);
+  }, [dashboard, setLocation]);
+
+  return <PageLoader />;
 }
 
 function Router() {
@@ -453,9 +466,7 @@ function Router() {
       <Route path="/colaborador">
         {() => (
           <ProtectedRoute>
-            <FeatureGate featureKey="dashboard">
-              <ColaboradorDashboard />
-            </FeatureGate>
+            <ColaboradorEntry />
           </ProtectedRoute>
         )}
       </Route>

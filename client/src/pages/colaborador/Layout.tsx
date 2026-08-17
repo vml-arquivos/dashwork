@@ -3,6 +3,7 @@ import { getCachedAccountBranding, loadAccountBranding, type AccountBrandingClie
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { USER_ACTIVITY_DEFINITIONS } from "@shared/userActivities";
 import { Button } from "@/components/ui/button";
 import NotificacoesFollowup from "@/components/NotificacoesFollowup";
 import NotificacoesAutomacao from "@/components/NotificacoesAutomacao";
@@ -354,6 +355,8 @@ export default function Layout({
   }, [colaborador?.id, colaborador?.conta_id]);
   const accountName = accountBranding?.nome_exibicao || accountBranding?.nome_fantasia || accountBranding?.razao_social || colaborador?.conta_nome || import.meta.env.VITE_APP_NAME || "Ritmo";
   const accountLogo = accountBranding?.logo_data_uri || null;
+  const atividadeKey = colaborador?.atividade || "administrativo";
+  const atividadeLabel = USER_ACTIVITY_DEFINITIONS[atividadeKey as keyof typeof USER_ACTIVITY_DEFINITIONS]?.label || "Atividade empresarial";
   const { isFeatureEnabled } = useFeatureAccess();
   const [mobileOpen, setMobileOpen] = useState(false);
   // Módulos expandidos — inicializa com o módulo ativo aberto
@@ -392,7 +395,7 @@ export default function Layout({
             {accountName}
           </div>
           <div className="text-[10px] text-slate-400 font-medium">
-            Ambiente de trabalho
+            {atividadeLabel}
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Layout from "./Layout";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { USER_ACTIVITY_DEFINITIONS, type UserActivityKey } from "@shared/userActivities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +55,10 @@ interface Colaborador {
   pode_atender_leads?: boolean;
   pode_ver_todos_leads?: boolean;
   chatwoot_agente_id?: number | null;
+  atividade?: UserActivityKey;
+  atividade_label?: string;
+  dashboard_inicial?: string;
+  modulos_ativos?: string[];
   created_at?: string | null;
 }
 
@@ -77,6 +82,7 @@ const CARGOS_CRIADOS_POR: Record<string, string[]> = {
 };
 
 const CARGOS_TELEFONE_OBRIGATORIO = ["captador externo"];
+const ATIVIDADES: UserActivityKey[] = ["gestao", "comercial", "atendimento", "operacoes", "financeiro", "administrativo"];
 
 function gerarSenha(): string {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$!";
@@ -135,6 +141,7 @@ export default function UsuariosPage() {
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [perfil, setPerfil] = useState<PerfilOperacional>("agente");
+  const [atividade, setAtividade] = useState<UserActivityKey>("administrativo");
   const [podeAtenderLeads, setPodeAtenderLeads] = useState(true);
   const [podeVerTodosLeads, setPodeVerTodosLeads] = useState(false);
   const [chatwootAgenteId, setChatwootAgenteId] = useState("");
@@ -153,6 +160,7 @@ export default function UsuariosPage() {
   const [editCargo, setEditCargo] = useState("");
   const [editTelefone, setEditTelefone] = useState("");
   const [editPerfil, setEditPerfil] = useState<PerfilOperacional>("agente");
+  const [editAtividade, setEditAtividade] = useState<UserActivityKey>("administrativo");
   const [editPodeAtenderLeads, setEditPodeAtenderLeads] = useState(true);
   const [editPodeVerTodosLeads, setEditPodeVerTodosLeads] = useState(false);
   const [editChatwootAgenteId, setEditChatwootAgenteId] = useState("");
@@ -220,6 +228,7 @@ export default function UsuariosPage() {
           senha,
           telefone: telefone.trim() || undefined,
           perfil,
+          atividade,
           pode_atender_leads: podeAtenderLeads,
           pode_ver_todos_leads: podeVerTodosLeads,
           chatwoot_agente_id: chatwootAgenteId.trim() ? Number(chatwootAgenteId) : null,
@@ -237,6 +246,7 @@ export default function UsuariosPage() {
       setTelefone("");
       setSenha("");
       setPerfil("agente");
+      setAtividade("administrativo");
       setPodeAtenderLeads(true);
       setPodeVerTodosLeads(false);
       setChatwootAgenteId("");
@@ -257,6 +267,7 @@ export default function UsuariosPage() {
     setEditCargo(col.cargo);
     setEditTelefone(col.telefone || "");
     setEditPerfil((col.perfil || perfilOperacionalPadrao(col.cargo)) as PerfilOperacional);
+    setEditAtividade(col.atividade || "administrativo");
     setEditPodeAtenderLeads(col.pode_atender_leads ?? podeAtenderPadrao(col.cargo));
     setEditPodeVerTodosLeads(col.pode_ver_todos_leads ?? podeVerTudoPadrao(col.perfil || perfilOperacionalPadrao(col.cargo), col.cargo));
     setEditChatwootAgenteId(col.chatwoot_agente_id ? String(col.chatwoot_agente_id) : "");
@@ -288,6 +299,7 @@ export default function UsuariosPage() {
           cargo: editCargo,
           telefone: editTelefone.trim() || null,
           perfil: editPerfil,
+          atividade: editAtividade,
           pode_atender_leads: editPodeAtenderLeads,
           pode_ver_todos_leads: editPodeVerTodosLeads,
           chatwoot_agente_id: editChatwootAgenteId.trim() ? Number(editChatwootAgenteId) : null,
@@ -453,6 +465,29 @@ export default function UsuariosPage() {
                   </div>
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                  <div className="space-y-1.5">
+                    <Label>Atividade do usuário</Label>
+                    <Select value={atividade} onValueChange={(value) => setAtividade(value as UserActivityKey)}>
+                      <SelectTrigger>
+                        <Workflow className="h-4 w-4 text-primary mr-1" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ATIVIDADES.map((item) => (
+                          <SelectItem key={item} value={item}>{USER_ACTIVITY_DEFINITIONS[item].label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">{USER_ACTIVITY_DEFINITIONS[atividade].description}</p>
+                  </div>
+                  <div className="rounded-lg bg-background/80 p-3 text-xs space-y-1">
+                    <p className="font-semibold text-foreground">Acesso inicial</p>
+                    <p className="text-muted-foreground">Dashboard: <span className="font-medium text-foreground">{USER_ACTIVITY_DEFINITIONS[atividade].dashboardPath}</span></p>
+                    <p className="text-muted-foreground">{USER_ACTIVITY_DEFINITIONS[atividade].modules.length} módulos operacionais derivados da atividade.</p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label htmlFor="telefone-user">Telefone WhatsApp</Label>
@@ -597,7 +632,7 @@ export default function UsuariosPage() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Telefone</Label>
                               <Input value={editTelefone} onChange={(e) => setEditTelefone(e.target.value)} className="h-9 text-sm" />
@@ -612,6 +647,18 @@ export default function UsuariosPage() {
                                   ))}
                                 </SelectContent>
                               </Select>
+                            </div>
+                            <div className="space-y-1 sm:col-span-2">
+                              <Label className="text-xs">Atividade e dashboard</Label>
+                              <Select value={editAtividade} onValueChange={(value) => setEditAtividade(value as UserActivityKey)}>
+                                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {ATIVIDADES.map((item) => (
+                                    <SelectItem key={item} value={item}>{USER_ACTIVITY_DEFINITIONS[item].label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-[11px] text-muted-foreground truncate">{USER_ACTIVITY_DEFINITIONS[editAtividade].dashboardPath} · {USER_ACTIVITY_DEFINITIONS[editAtividade].modules.length} módulos</p>
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Chatwoot agente ID</Label>
@@ -653,6 +700,7 @@ export default function UsuariosPage() {
                                 <p className="font-semibold text-sm truncate">{col.nome}</p>
                                 <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${badgeCargo(col.cargo)}`}>{col.cargo}</span>
                                 <Badge variant="outline">{labelPerfil(col.perfil)}</Badge>
+                                <Badge variant="outline" className="border-primary/30 text-primary">{col.atividade_label || USER_ACTIVITY_DEFINITIONS[col.atividade || "administrativo"].label}</Badge>
                                 <Badge variant={col.ativo ? "default" : "secondary"} className={col.ativo ? "bg-green-600 hover:bg-green-700" : ""}>
                                   {col.ativo ? "Ativo" : "Inativo"}
                                 </Badge>
@@ -663,6 +711,9 @@ export default function UsuariosPage() {
                                 <span>Atende leads: {col.pode_atender_leads ? "Sim" : "Não"}</span>
                                 <span>Visão ampla: {col.pode_ver_todos_leads ? "Sim" : "Não"}</span>
                                 <span>Chatwoot agente: {col.chatwoot_agente_id ?? "—"}</span>
+                              </p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                Dashboard inicial: <span className="font-medium text-foreground">{col.dashboard_inicial || USER_ACTIVITY_DEFINITIONS[col.atividade || "administrativo"].dashboardPath}</span> · {col.modulos_ativos?.length || USER_ACTIVITY_DEFINITIONS[col.atividade || "administrativo"].modules.length} módulos
                               </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">

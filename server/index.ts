@@ -80,6 +80,12 @@ import {
 } from "./services/featureAccessService";
 import { enviarDocumento, resolverTokenPublico } from "./services/documentDeliveryService";
 import { LEGACY_DEFAULT_CONTA_ID } from "./tenantContext";
+import {
+  dashboardPathForUserActivity,
+  getUserActivityDefinition,
+  modulesForUserActivity,
+  normalizarAtividade,
+} from "../shared/userActivities.ts";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1148,6 +1154,7 @@ async function startServer() {
   app.use('/api/cnpj', cnpjRouter);
   app.use('/api', createAccountPlatformRouter());
   app.use('/api/empresas', auth, requireAccountFeature("clientes-pj"), sociosDocumentosRouter);
+  app.use('/api/clientes-pf', auth, requireAccountFeature("clientes-pf"));
   app.use('/api/documentacao', documentacaoRouter);
   
   // Rotas de blog, banners e sitemap
@@ -1556,6 +1563,29 @@ async function startServer() {
     console.log('[startup] Tabelas de acompanhamento financeiro verificadas/criadas com sucesso.');
   } catch (err: any) {
     console.error('[startup] Aviso: falha ao auto-criar tabelas de acompanhamento financeiro:', err.message);
+  }
+
+  // ─── AUTO-CREATE: Perfil de atividade dos usuários ─────────────────────────
+  // O cargo continua sendo usado para a hierarquia, enquanto atividade e módulos
+  // definem a experiência inicial e o escopo operacional de cada usuário.
+  try {
+    await pool.query(`
+      ALTER TABLE colaboradores
+        ADD COLUMN IF NOT EXISTS atividade TEXT NOT NULL DEFAULT 'administrativo',
+        ADD COLUMN IF NOT EXISTS modulos_ativos JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+      UPDATE colaboradores
+         SET atividade = CASE
+           WHEN LOWER(TRIM(COALESCE(cargo, ''))) IN ('administrador', 'admin', 'diretor', 'gerente comercial', 'gerente', 'gestor') THEN 'gestao'
+           WHEN LOWER(TRIM(COALESCE(cargo, ''))) IN ('captador externo', 'consultor de crédito', 'consultor de credito') THEN 'comercial'
+           WHEN LOWER(TRIM(COALESCE(cargo, ''))) IN ('analista de crédito', 'analista de credito', 'analista') THEN 'operacoes'
+           ELSE 'administrativo'
+         END
+       WHERE atividade IS NULL OR TRIM(atividade) = '';
+    `);
+    console.log('[startup] Campos de atividade e módulos individuais verificados.');
+  } catch (err: any) {
+    console.error('[startup] Aviso: falha ao preparar campos de atividade dos usuários:', err.message);
   }
 
   // ─── AUTO-CREATE: Fix 060 — Acompanhamento bancário, empresas e faturamento ───
@@ -2447,6 +2477,8 @@ async function startServer() {
       const result = await systemPool.query(
         `SELECT c.id, c.email, c.nome, c.cargo, c.senha_hash, c.ativo, c.chatwoot_agente_id,
                 c.conta_id, cp.nome AS conta_nome, cp.perfil_base AS conta_perfil, cp.status AS conta_status, cp.modulos_ativos,
+                COALESCE(NULLIF(to_jsonb(c)->>'atividade', ''), 'administrativo') AS atividade,
+                COALESCE(NULLIF(to_jsonb(c)->>'modulos_ativos', '')::jsonb, '[]'::jsonb) AS modulos_usuario,
                 COALESCE(c.acesso_acompanhamento_bancario, false) AS acesso_acompanhamento_bancario,
                 COALESCE(c.perfil, CASE
                   WHEN LOWER(COALESCE(c.cargo, '')) IN ('administrador', 'admin', 'diretor') THEN 'admin'
@@ -2474,18 +2506,27 @@ async function startServer() {
         res.status(401).json({ error: "Credenciais inválidas" });
         return;
       }
+      const atividade = normalizarAtividade(user.atividade);
+      const activityDefinition = getUserActivityDefinition(atividade);
+      const modulosAtivosUsuario = Array.isArray(user.modulos_usuario) && user.modulos_usuario.length > 0
+        ? user.modulos_usuario.map(String)
+        : modulesForUserActivity(atividade);
       const colaboradorData = {
         id: user.id,
         email: user.email,
         nome: user.nome,
         cargo: user.cargo,
+        atividade,
+        atividade_label: activityDefinition.label,
+        dashboard_inicial: activityDefinition.dashboardPath,
         perfil: user.perfil || perfilOperacionalPorCargo(user.cargo),
         pode_atender_leads: user.pode_atender_leads ?? podeAtenderLeadsPorCargo(user.cargo),
         pode_ver_todos_leads: user.pode_ver_todos_leads ?? podeVerTodosLeadsPorPerfilOuCargo(user.perfil, user.cargo),
         chatwoot_agente_id: user.chatwoot_agente_id ?? null,
         acesso_acompanhamento_bancario: user.acesso_acompanhamento_bancario ?? false,
         ativo: user.ativo,
-        conta_id: user.conta_id, conta_nome: user.conta_nome, conta_perfil: user.conta_perfil, modulos_ativos: user.modulos_ativos || [],
+        conta_id: user.conta_id, conta_nome: user.conta_nome, conta_perfil: user.conta_perfil,
+        modulos_ativos: modulosAtivosUsuario,
       };
       const token = jwt.sign(
         {
@@ -3288,7 +3329,7 @@ async function startServer() {
   });
 
   // ─── COLABORADORES API ────────────────────────────────────────────────────
-  app.post("/api/colaboradores", auth, async (req: Request, res: Response) => {
+  app.post("/api/colaboradores", auth, requireAccountFeature("usuarios"), async (req: Request, res: Response) => {
     try {
       const solicitante = (req as Request & { colaborador: any }).colaborador;
       const cargoSolicitante = solicitante?.cargo || '';
@@ -3297,7 +3338,7 @@ async function startServer() {
         res.status(403).json({ error: "Apenas Administrador, Diretor e Gerente Comercial podem criar colaboradores." });
         return;
       }
-      const { nome, email, cargo, senha, telefone, perfil, pode_atender_leads, pode_ver_todos_leads, chatwoot_agente_id } = req.body;
+      const { nome, email, cargo, senha, telefone, perfil, pode_atender_leads, pode_ver_todos_leads, chatwoot_agente_id, atividade } = req.body;
       if (!nome || !email || !cargo || !senha) {
         res.status(400).json({ error: "Campos obrigatórios: nome, email, cargo, senha" });
         return;
@@ -3325,6 +3366,8 @@ async function startServer() {
       const chatwootAgenteIdFinal = chatwoot_agente_id !== undefined && chatwoot_agente_id !== null && String(chatwoot_agente_id).trim() !== ''
         ? Number(chatwoot_agente_id)
         : null;
+      const atividadeFinal = normalizarAtividade(atividade);
+      const modulosAtivosFinal = modulesForUserActivity(atividadeFinal);
       const colunas = await getTableColumns("colaboradores");
       const dados: Record<string, unknown> = {
         nome: nome.trim(),
@@ -3337,6 +3380,8 @@ async function startServer() {
         pode_atender_leads: podeAtenderLeadsFinal,
         pode_ver_todos_leads: podeVerTodosLeadsFinal,
         chatwoot_agente_id: chatwootAgenteIdFinal,
+        atividade: atividadeFinal,
+        modulos_ativos: JSON.stringify(modulosAtivosFinal),
         conta_id: solicitanteContaId,
       };
       const entries = Object.entries(dados).filter(([key]) => colunas.has(key));
@@ -3348,7 +3393,14 @@ async function startServer() {
       );
       const userId = rows[0].id;
       console.log(`[COLAB] Colaborador criado: ${nome} (${email}) cargo=${cargo}`);
-      res.status(201).json({ success: true, id: userId, message: `Colaborador "${nome}" criado com sucesso!` });
+      res.status(201).json({
+        success: true,
+        id: userId,
+        atividade: atividadeFinal,
+        dashboard_inicial: dashboardPathForUserActivity(atividadeFinal),
+        modulos_ativos: modulosAtivosFinal,
+        message: `Colaborador "${nome}" criado com sucesso!`,
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("unique") || msg.includes("duplicate")) {
@@ -3360,7 +3412,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/colaboradores", auth, async (req: Request, res: Response) => {
+  app.get("/api/colaboradores", auth, requireAccountFeature("usuarios"), async (req: Request, res: Response) => {
     try {
       const solicitante = (req as Request & { colaborador: any }).colaborador;
       const cargoSolicitante = solicitante?.cargo || '';
@@ -3377,6 +3429,13 @@ async function startServer() {
         `SELECT c.id, c.email, c.nome, c.cargo, c.ativo,
                 to_jsonb(c)->>'telefone' AS telefone,
                 to_jsonb(c)->>'chatwoot_agente_id' AS chatwoot_agente_id,
+                COALESCE(NULLIF(to_jsonb(c)->>'atividade', ''), CASE
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('administrador', 'admin', 'diretor', 'gerente comercial', 'gerente', 'gestor') THEN 'gestao'
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('captador externo', 'consultor de crédito', 'consultor de credito') THEN 'comercial'
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('analista de crédito', 'analista de credito', 'analista') THEN 'operacoes'
+                  ELSE 'administrativo'
+                END) AS atividade,
+                COALESCE(NULLIF(to_jsonb(c)->>'modulos_ativos', '')::jsonb, '[]'::jsonb) AS modulos_ativos,
                 COALESCE(to_jsonb(c)->>'perfil', CASE
                   WHEN LOWER(COALESCE(c.cargo, '')) IN ('administrador', 'admin', 'diretor') THEN 'admin'
                   WHEN LOWER(COALESCE(c.cargo, '')) IN ('gerente comercial', 'gerente', 'gestor') THEN 'gestor'
@@ -3397,7 +3456,21 @@ async function startServer() {
       const filtrados = nivelSolicitante === 0
         ? rows
         : rows.filter(r => nivelCargo(r.cargo) > nivelSolicitante);
-      res.json(filtrados);
+      const enriquecidos = filtrados.map((row) => {
+        const atividade = normalizarAtividade(row.atividade);
+        const definition = getUserActivityDefinition(atividade);
+        const modulos = Array.isArray(row.modulos_ativos) && row.modulos_ativos.length > 0
+          ? row.modulos_ativos.map(String)
+          : modulesForUserActivity(atividade);
+        return {
+          ...row,
+          atividade,
+          atividade_label: definition.label,
+          dashboard_inicial: definition.dashboardPath,
+          modulos_ativos: modulos,
+        };
+      });
+      res.json(enriquecidos);
     } catch (err) {
       console.error("[COLAB GET ERROR]", err);
       res.status(500).json({ error: "Erro ao buscar colaboradores." });
@@ -3435,7 +3508,7 @@ async function startServer() {
     }
   });
 
-  app.patch("/api/colaboradores/:id", auth, async (req: Request, res: Response) => {
+  app.patch("/api/colaboradores/:id", auth, requireAccountFeature("usuarios"), async (req: Request, res: Response) => {
     try {
       const solicitante = (req as Request & { colaborador: any }).colaborador;
       const cargoSolicitante = solicitante?.cargo || '';
@@ -3448,7 +3521,7 @@ async function startServer() {
 
       // Busca o cargo atual do alvo dentro da mesma conta para verificar hierarquia.
       const alvoResult = await pool.query(
-        "SELECT id, cargo FROM colaboradores WHERE id = $1 AND conta_id = $2",
+        "SELECT id, cargo, to_jsonb(colaboradores)->>'atividade' AS atividade FROM colaboradores WHERE id = $1 AND conta_id = $2",
         [req.params.id, contaId]
       );
       if (!alvoResult.rows[0]) {
@@ -3456,6 +3529,7 @@ async function startServer() {
         return;
       }
       const cargoAlvo = alvoResult.rows[0].cargo;
+      const atividadeAtual = normalizarAtividade(alvoResult.rows[0].atividade);
 
       // Bloqueia edição de cargos iguais ou superiores (exceto admin-key)
       if (!podeGerenciarCargo(cargoSolicitante, cargoAlvo)) {
@@ -3463,7 +3537,7 @@ async function startServer() {
         return;
       }
 
-      const { nome, email, cargo, ativo, senha, telefone, perfil, pode_atender_leads, pode_ver_todos_leads, chatwoot_agente_id } = req.body;
+      const { nome, email, cargo, ativo, senha, telefone, perfil, pode_atender_leads, pode_ver_todos_leads, chatwoot_agente_id, atividade } = req.body;
 
       // Se está tentando alterar o cargo, verifica se o novo cargo também é inferior
       if (cargo && !podeGerenciarCargo(cargoSolicitante, cargo)) {
@@ -3475,6 +3549,9 @@ async function startServer() {
       const updates: Record<string, unknown> = {};
       if (colunas.has("updated_at")) updates.updated_at = new Date().toISOString();
       const cargoFinal = cargo || cargoAlvo;
+      const atividadeFinal = atividade !== undefined
+        ? normalizarAtividade(atividade)
+        : atividadeAtual;
       const definir = (campo: string, valor: unknown) => {
         if (colunas.has(campo)) updates[campo] = valor;
       };
@@ -3491,6 +3568,10 @@ async function startServer() {
       else if (cargo !== undefined) definir("pode_atender_leads", podeAtenderLeadsPorCargo(cargoFinal));
       if (pode_ver_todos_leads !== undefined) definir("pode_ver_todos_leads", pode_ver_todos_leads);
       else if (cargo !== undefined || perfil !== undefined) definir("pode_ver_todos_leads", podeVerTodosLeadsPorPerfilOuCargo(String(updates.perfil || perfil || ''), cargoFinal));
+      if (atividade !== undefined || cargo !== undefined) {
+        definir("atividade", atividadeFinal);
+        definir("modulos_ativos", JSON.stringify(modulesForUserActivity(atividadeFinal)));
+      }
       const keys = Object.keys(updates);
       if (!keys.length) {
         res.status(400).json({ error: "Nenhum campo válido para atualizar." });
@@ -3506,10 +3587,26 @@ async function startServer() {
                     to_jsonb(c)->>'perfil' AS perfil,
                     to_jsonb(c)->>'pode_atender_leads' AS pode_atender_leads,
                     to_jsonb(c)->>'pode_ver_todos_leads' AS pode_ver_todos_leads,
-                    to_jsonb(c)->>'chatwoot_agente_id' AS chatwoot_agente_id`,
+                    to_jsonb(c)->>'chatwoot_agente_id' AS chatwoot_agente_id,
+                    COALESCE(NULLIF(to_jsonb(c)->>'atividade', ''), 'administrativo') AS atividade,
+                    COALESCE(NULLIF(to_jsonb(c)->>'modulos_ativos', '')::jsonb, '[]'::jsonb) AS modulos_ativos`,
         [...values, req.params.id, contaId]
       );
-      res.json({ success: true, colaborador: rows[0] });
+      const atualizado = rows[0];
+      const atividadeAtualizada = normalizarAtividade(atualizado?.atividade);
+      const definition = getUserActivityDefinition(atividadeAtualizada);
+      res.json({
+        success: true,
+        colaborador: {
+          ...atualizado,
+          atividade: atividadeAtualizada,
+          atividade_label: definition.label,
+          dashboard_inicial: definition.dashboardPath,
+          modulos_ativos: Array.isArray(atualizado?.modulos_ativos) && atualizado.modulos_ativos.length > 0
+            ? atualizado.modulos_ativos.map(String)
+            : modulesForUserActivity(atividadeAtualizada),
+        },
+      });
     } catch (err) {
       console.error("[COLAB PATCH ERROR]", err);
       res.status(500).json({ error: "Erro ao atualizar colaborador." });
@@ -3542,8 +3639,11 @@ async function startServer() {
     try {
       const colaborador = (req as Request & { colaborador: any }).colaborador;
       const result = await pool.query(
-        `SELECT c.id, c.email, c.nome, c.cargo, c.ativo,
+        `        SELECT c.id, c.email, c.nome, c.cargo, c.ativo,
                 to_jsonb(c)->>'chatwoot_agente_id' AS chatwoot_agente_id,
+                COALESCE(NULLIF(to_jsonb(c)->>'atividade', ''), 'administrativo') AS atividade,
+                COALESCE(NULLIF(to_jsonb(c)->>'modulos_ativos', '')::jsonb, '[]'::jsonb) AS modulos_ativos,
+
                 COALESCE(c.conta_id, $2::uuid) AS conta_id,
                 cp.nome AS conta_nome,
                 cp.perfil_base AS conta_perfil,
@@ -3580,10 +3680,19 @@ async function startServer() {
         return;
       }
       const cargoLower = (user.cargo || '').toLowerCase();
+      const atividade = normalizarAtividade(user.atividade);
+      const activityDefinition = getUserActivityDefinition(atividade);
+      const modulosAtivos = Array.isArray(user.modulos_ativos) && user.modulos_ativos.length > 0
+        ? user.modulos_ativos.map(String)
+        : modulesForUserActivity(atividade);
       const perfil = user.perfil || perfilOperacionalPorCargo(user.cargo);
       const podeVerTudo = user.pode_ver_todos_leads ?? podeVerTodosLeadsPorPerfilOuCargo(perfil, user.cargo);
       res.json({
         ...user,
+        atividade,
+        atividade_label: activityDefinition.label,
+        dashboard_inicial: activityDefinition.dashboardPath,
+        modulos_ativos: modulosAtivos,
         perfil,
         pode_atender_leads: user.pode_atender_leads ?? podeAtenderLeadsPorCargo(user.cargo),
         pode_ver_todos_leads: podeVerTudo,
@@ -4473,16 +4582,21 @@ async function startServer() {
   });
 
   // ─── PATCH /api/colaboradores/:id/toggle ──────────────────────────────────────────────────────────────────────────────────────
-  app.patch("/api/colaboradores/:id/toggle", auth, async (req: Request, res: Response) => {
+  app.patch("/api/colaboradores/:id/toggle", auth, requireAccountFeature("usuarios"), async (req: Request, res: Response) => {
     try {
       const solicitante = (req as Request & { colaborador: any }).colaborador;
       const cargoSolicitante = solicitante?.cargo || '';
-
-      // Busca o cargo do alvo
+      const contaId = String(solicitante?.conta_id || '').trim();
+      if (!contaId) {
+        res.status(401).json({ error: "Conta da sessão não identificada." });
+        return;
+      }
+      // Busca o cargo do alvo somente dentro da conta autenticada.
       const alvoResult = await pool.query(
-        "SELECT id, cargo FROM colaboradores WHERE id = $1",
-        [req.params.id]
+        "SELECT id, cargo FROM colaboradores WHERE id = $1 AND conta_id = $2",
+        [req.params.id, contaId]
       );
+
       if (!alvoResult.rows[0]) {
         res.status(404).json({ error: "Colaborador não encontrado." });
         return;
@@ -4497,8 +4611,8 @@ async function startServer() {
 
       const { id } = req.params;
       const result = await pool.query(
-        "UPDATE colaboradores SET ativo = NOT ativo WHERE id = $1 RETURNING *",
-        [id]
+        "UPDATE colaboradores SET ativo = NOT ativo WHERE id = $1 AND conta_id = $2 RETURNING *",
+        [id, contaId]
       );
       res.json(result.rows[0]);
     } catch (err) {

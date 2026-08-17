@@ -30,6 +30,7 @@ export default function CargoRoute({
 }: CargoRouteProps) {
   const { colaborador, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const dashboardInicial = colaborador?.dashboard_inicial || "/colaborador/dashboard";
 
   const cargoNormalizado = normalizarCargo(colaborador?.cargo);
 
@@ -46,9 +47,9 @@ export default function CargoRoute({
 
   useEffect(() => {
     if (!loading && colaborador && !temAcesso) {
-      setLocation("/colaborador/dashboard");
+      setLocation(dashboardInicial);
     }
-  }, [loading, colaborador, temAcesso, setLocation]);
+  }, [loading, colaborador, temAcesso, dashboardInicial, setLocation]);
 
   if (loading) {
     return (

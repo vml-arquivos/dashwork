@@ -15,10 +15,11 @@ interface FeatureConfigMe {
 }
 
 let cachedConfig: FeatureConfigMe | null = null;
+let cachedConfigKey: string | null = null;
 let loadingPromise: Promise<FeatureConfigMe> | null = null;
 
-async function fetchFeatureConfig(): Promise<FeatureConfigMe> {
-  if (cachedConfig) return cachedConfig;
+async function fetchFeatureConfig(cacheKey: string): Promise<FeatureConfigMe> {
+  if (cachedConfig && cachedConfigKey === cacheKey) return cachedConfig;
   if (!loadingPromise) {
     loadingPromise = apiFetch("/api/configuracao-funcoes/me")
       .then(data => {
@@ -27,6 +28,7 @@ async function fetchFeatureConfig(): Promise<FeatureConfigMe> {
           userOverride: {},
         };
         cachedConfig = resolved;
+        cachedConfigKey = cacheKey;
         return resolved;
       })
       .finally(() => {
@@ -38,18 +40,20 @@ async function fetchFeatureConfig(): Promise<FeatureConfigMe> {
 
 export function invalidateFeatureAccessCache() {
   cachedConfig = null;
+  cachedConfigKey = null;
   loadingPromise = null;
 }
 
 export function useFeatureAccess() {
   const { colaborador } = useAuth();
-  const [config, setConfig] = useState<FeatureConfigMe | null>(cachedConfig);
-  const [loading, setLoading] = useState(!cachedConfig);
+  const userCacheKey = colaborador?.id || "anonymous";
+  const [config, setConfig] = useState<FeatureConfigMe | null>(cachedConfigKey === userCacheKey ? cachedConfig : null);
+  const [loading, setLoading] = useState(!(cachedConfig && cachedConfigKey === userCacheKey));
 
   useEffect(() => {
     let alive = true;
-    setLoading(!cachedConfig);
-    fetchFeatureConfig()
+    setLoading(!(cachedConfig && cachedConfigKey === userCacheKey));
+    fetchFeatureConfig(userCacheKey)
       .then(data => {
         if (alive) setConfig(data);
       })
@@ -62,7 +66,7 @@ export function useFeatureAccess() {
     return () => {
       alive = false;
     };
-  }, [colaborador?.id]);
+  }, [userCacheKey]);
 
   const isAdministrador = ["administrador", "admin"].includes(
     (colaborador?.cargo || "").toLowerCase()
@@ -72,10 +76,15 @@ export function useFeatureAccess() {
     const global = config?.global || {};
     const userOverride = config?.userOverride || {};
     const accountModules = new Set(config?.accountModules || []);
+    const userModules = new Set(colaborador?.modulos_ativos || []);
     const controlled = new Set(ACCOUNT_CONTROLLED_FEATURES);
     const map: FeatureValueMap = {};
     for (const item of FEATURE_CATALOG) {
       if (accountModules.size > 0 && controlled.has(item.key) && !accountModules.has(item.key)) {
+        map[item.key] = false;
+        continue;
+      }
+      if (userModules.size > 0 && controlled.has(item.key) && !userModules.has(item.key)) {
         map[item.key] = false;
         continue;
       }
@@ -90,7 +99,7 @@ export function useFeatureAccess() {
       else map[item.key] = true;
     }
     return map;
-  }, [config, isAdministrador]);
+  }, [config, isAdministrador, colaborador?.modulos_ativos?.join("|")]);
 
   function isFeatureEnabled(featureKey?: string | null): boolean {
     if (!featureKey) return true;
