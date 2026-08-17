@@ -65,7 +65,7 @@ const NAV_MODULES: NavModule[] = [
   // ── 1. Visão geral ──────────────────────────────────────────────────────────
   {
     id: "visao",
-    label: "Visão Geral",
+    label: "Visão de Performance",
     icon: LayoutDashboard,
     color: "text-slate-600",
     items: [
@@ -81,37 +81,37 @@ const NAV_MODULES: NavModule[] = [
   // ── 2. Comercial ────────────────────────────────────────────────────────────
   {
     id: "comercial",
-    label: "Comercial",
+    label: "Operação Comercial",
     icon: Kanban,
     color: "text-blue-600",
     items: [
       {
         href: "/colaborador/crm",
-        label: "Funil de Vendas",
+        label: "Pipeline de Oportunidades",
         icon: Kanban,
         featureKey: "funil-vendas",
       },
       {
         href: "/colaborador/triagem",
-        label: "Triagem de Leads",
+        label: "Qualificação",
         icon: ShieldAlert,
         featureKey: "triagem-leads",
       },
       {
         href: "/colaborador/simulacoes",
-        label: "Simulações",
+        label: "Planejamentos",
         icon: Calculator,
         featureKey: "simulacoes",
       },
       {
         href: "/colaborador/calculadora",
-        label: "Calculadora",
+        label: "Precificação",
         icon: Calculator,
         featureKey: "calculadora",
       },
       {
         href: "/colaborador/orcamentos",
-        label: "Orçamentos",
+        label: "Orçamentos e Propostas",
         icon: FileSignature,
         featureKey: "orcamentos",
       },
@@ -127,25 +127,25 @@ const NAV_MODULES: NavModule[] = [
     items: [
       {
         href: "/colaborador/empresas",
-        label: "Clientes PJ",
+        label: "Empresas",
         icon: Building2,
         featureKey: "clientes-pj",
       },
       {
         href: "/colaborador/clientes",
-        label: "Clientes PF",
+        label: "Pessoas",
         icon: Users,
         featureKey: "clientes-pf",
       },
       {
         href: "/colaborador/relatorio-empresas",
-        label: "Relatórios PJ",
+        label: "Relatórios de Clientes",
         icon: BarChart3,
         featureKey: "relatorios-pj",
       },
       {
         href: "/colaborador/cadastros-incompletos",
-        label: "Cadastros Incompletos",
+        label: "Pendências de Cadastro",
         icon: DatabaseZap,
         featureKey: "cadastros-incompletos",
       },
@@ -155,19 +155,19 @@ const NAV_MODULES: NavModule[] = [
   // ── 4. Assessoria Inteligente (NOVO) ────────────────────────────────────────
   {
     id: "assessoria",
-    label: "Assessoria IA",
+    label: "Inteligência e Melhoria",
     icon: BrainCircuit,
     color: "text-emerald-600",
     items: [
       {
         href: "/colaborador/assessoria",
-        label: "Central de Assessoria",
+        label: "Central de Insights",
         icon: BrainCircuit,
         featureKey: "assessoria-ia",
       },
       {
         href: "/colaborador/diagnostico-credito",
-        label: "Diagnóstico de Crédito",
+        label: "Diagnóstico de Performance",
         icon: ClipboardCheck,
         featureKey: "diagnostico-credito",
       },
@@ -177,25 +177,25 @@ const NAV_MODULES: NavModule[] = [
   // ── 5. Financeiro ───────────────────────────────────────────────────────────
   {
     id: "financeiro",
-    label: "Financeiro",
+    label: "Indicadores",
     icon: Banknote,
     color: "text-amber-600",
     items: [
       {
         href: "/colaborador/acompanhamento-bancario",
-        label: "Acomp. Bancário",
+        label: "Acompanhamento Financeiro",
         icon: Activity,
         featureKey: "acompanhamento-bancario",
       },
       {
         href: "/colaborador/acompanhamento-financeiro",
-        label: "Acomp. Financeiro",
+        label: "Rotina Financeira",
         icon: BarChart2,
         featureKey: "acompanhamento-financeiro",
       },
       {
         href: "/colaborador/previsao-faturamento",
-        label: "Faturamento",
+        label: "Faturamento e Previsão",
         icon: TrendingUp,
         featureKey: "faturamento",
       },
@@ -205,7 +205,7 @@ const NAV_MODULES: NavModule[] = [
   // ── 6. Documentos e Contratos ───────────────────────────────────────────────
   {
     id: "documentos",
-    label: "Contratos",
+    label: "Documentos Comerciais",
     icon: FileText,
     color: "text-orange-600",
     items: [
@@ -221,34 +221,34 @@ const NAV_MODULES: NavModule[] = [
   // ── 7. Gestão (admin) ───────────────────────────────────────────────────────
   {
     id: "gestao",
-    label: "Gestão",
+    label: "Administração",
     icon: Settings,
     color: "text-slate-500",
     allowedCargos: CARGOS_GESTAO,
     items: [
       {
         href: "/colaborador/contadores",
-        label: "Contadores",
+        label: "Parceiros",
         icon: BookUser,
         allowedCargos: ["administrador", "diretor"],
         featureKey: "contadores",
       },
       {
         href: "/colaborador/integracoes",
-        label: "Integrações n8n",
+        label: "Integrações",
         icon: PlugZap,
         allowedCargos: ["administrador"],
         featureKey: "integracoes",
       },
       {
         href: "/colaborador/gestao-blog",
-        label: "Conteúdo e SEO",
+        label: "Conteúdo",
         icon: Newspaper,
         allowedCargos: CARGOS_GESTAO,
       },
       {
         href: "/colaborador/gestao-banners",
-        label: "Banners do Site",
+        label: "Comunicação",
         icon: ImageIcon,
         allowedCargos: CARGOS_GESTAO,
       },
@@ -261,7 +261,7 @@ const NAV_MODULES: NavModule[] = [
       },
       {
         href: "/colaborador/personalizacao",
-        label: "Minha Empresa",
+        label: "Personalização da Conta",
         icon: Building2,
         allowedCargos: CARGOS_GESTAO,
         featureKey: "personalizacao",
@@ -383,7 +383,7 @@ export default function Layout({
         {accountLogo ? (
           <img src={accountLogo} alt={`Logo ${accountName}`} className="h-9 max-w-[120px] object-contain" />
         ) : (
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#0f9f91] text-sm font-black text-white">
             {accountName.charAt(0).toUpperCase()}
           </div>
         )}
@@ -392,7 +392,7 @@ export default function Layout({
             {accountName}
           </div>
           <div className="text-[10px] text-slate-400 font-medium">
-            Área de trabalho
+            Ambiente de trabalho
           </div>
         </div>
       </div>
@@ -525,7 +525,7 @@ export default function Layout({
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="workpro-shell flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar desktop */}
       <aside className="hidden lg:flex w-56 shrink-0 flex-col bg-white border-r border-slate-100 shadow-sm">
         {sidebar}
@@ -609,7 +609,7 @@ export default function Layout({
           }`}
         >
           <div
-            className={`destrava-page ${
+            className={`workpro-page ${
               isEmpresaDetalhe
                 ? "min-h-full overflow-visible"
                 : isTelaEmpresas

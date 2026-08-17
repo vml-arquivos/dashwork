@@ -1,5 +1,5 @@
-export const SITE_URL = "https://destravacredito.com";
-export const SITE_NAME = "Destrava Crédito";
+export const SITE_URL = "https://dashwork.destravacredito.com";
+export const SITE_NAME = "Work Pro";
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 
 export type SeoChangeFrequency = "daily" | "weekly" | "monthly" | "yearly";
@@ -18,57 +18,57 @@ export interface PublicSeoDefinition {
 
 export const PUBLIC_SEO_ROUTES: Record<string, PublicSeoDefinition> = {
   "/": {
-    title: "Assessoria de Crédito Empresarial",
+    title: "Aceleração e Performance Empresarial",
     description:
-      "Assessoria para MEI, ME, EPP e empresas acessarem linhas de crédito com análise, organização documental e acompanhamento especializado.",
+      "Work Pro é a plataforma para organizar clientes, propostas, contratos e a performance diária da sua empresa.",
     sitemap: { priority: 1, changefreq: "weekly" },
   },
   "/sobre": {
-    title: "Sobre a Destrava Crédito",
+    title: "Sobre o Work Pro",
     description:
-      "Conheça a Destrava Crédito, nossa atuação em assessoria empresarial e como acompanhamos empresas na busca por crédito.",
+      "Conheça o Work Pro, uma plataforma multiusuários para acelerar a operação e dar clareza à performance empresarial.",
     sitemap: { priority: 0.5, changefreq: "yearly" },
   },
   "/produtos": {
-    title: "Soluções de Crédito Empresarial e Pessoal",
+    title: "Módulos do Work Pro",
     description:
-      "Conheça as soluções de crédito e assessoria da Destrava para empresas e pessoas físicas e encontre o caminho adequado ao seu perfil.",
+      "Conheça os módulos do Work Pro para clientes, orçamentos, propostas, contratos e indicadores de performance.",
     sitemap: { priority: 0.8, changefreq: "weekly" },
   },
   "/blog": {
-    title: "Blog de Crédito Empresarial e Gestão Financeira",
+    title: "Conteúdos de Gestão e Performance",
     description:
-      "Conteúdos sobre crédito empresarial, organização financeira, MEI, pequenas empresas e preparação para análise bancária.",
+      "Conteúdos práticos para organizar a rotina, acelerar decisões e melhorar a performance da operação empresarial.",
     sitemap: { priority: 0.7, changefreq: "weekly" },
   },
   "/faq": {
-    title: "Perguntas Frequentes sobre Crédito Empresarial",
+    title: "Perguntas frequentes sobre o Work Pro",
     description:
-      "Tire dúvidas sobre assessoria de crédito, documentos, análise bancária, prazos e linhas disponíveis para empresas.",
+      "Tire dúvidas sobre contas empresariais, usuários, permissões, clientes, propostas, contratos e operação diária.",
     sitemap: { priority: 0.5, changefreq: "monthly" },
   },
   "/contato": {
-    title: "Fale com a Destrava Crédito",
+    title: "Fale com o Work Pro",
     description:
-      "Fale com a equipe da Destrava Crédito por formulário, telefone ou WhatsApp. Atendimento em Brasília, Goiânia e todo o Brasil.",
+      "Saiba como levar o Work Pro para a rotina da sua empresa e organizar sua operação em um ambiente multiusuários.",
     sitemap: { priority: 0.6, changefreq: "monthly" },
   },
   "/simulacao": {
-    title: "Solicite uma Simulação de Crédito Empresarial",
+    title: "Planeje a próxima ação da sua empresa",
     description:
-      "Envie seus dados para uma análise inicial de crédito empresarial e receba orientação da equipe Destrava Crédito.",
+      "Organize oportunidades e acompanhe a próxima ação comercial da sua empresa no Work Pro.",
     sitemap: { priority: 0.8, changefreq: "weekly" },
   },
   "/simulador": {
-    title: "Simulador de Crédito",
+    title: "Planejamento comercial",
     description:
-      "Simule cenários de crédito e entenda valores estimados antes de conversar com um especialista. Condições sujeitas à análise.",
+      "Estruture cenários comerciais e avance com mais clareza sobre valores, prazos e próximos passos.",
     sitemap: { priority: 0.8, changefreq: "weekly" },
   },
   "/simular": {
-    title: "Simulador de Crédito Empresarial e Pessoal",
+    title: "Organize sua operação comercial",
     description:
-      "Compare cenários estimados de crédito empresarial e pessoal e solicite uma análise gratuita com a Destrava Crédito.",
+      "Acesse o Work Pro para organizar clientes, orçamentos, propostas e contratos em um só ambiente.",
     sitemap: { priority: 0.95, changefreq: "weekly" },
   },
   "/credito-empresas": {

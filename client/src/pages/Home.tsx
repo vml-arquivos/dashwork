@@ -1,687 +1,157 @@
-import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import HeroCarousel from "@/components/HeroCarousel";
-import { BannerDisplay } from "@/components/BannerDisplay";
-import SEO, { organizationStructuredData, localBusinessStructuredData, faqStructuredData } from "@/components/SEO";
-import BenefitCard from "@/components/BenefitCard";
+import Header from "@/components/Header";
+import SEO from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Link } from "wouter";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  Users,
-  TrendingUp,
-  FileCheck,
-  Clock,
-  Shield,
-  HeadphonesIcon,
-  CheckCircle2,
-  MessageCircle,
-  Target,
-  Lightbulb,
+  Activity,
   ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  FileSignature,
+  FileText,
+  Gauge,
+  LayoutDashboard,
+  ShieldCheck,
+  Sparkles,
+  Users,
 } from "lucide-react";
-import { useState, FormEvent } from "react";
-import { useLocation, Link } from "wouter";
-import FormSubmitError from "@/components/FormSubmitError";
-import { submitLead } from "@/lib/leads";
-import { formatCnpj, isValidCnpj } from "@/lib/brDocuments";
+
+const modules = [
+  {
+    icon: Users,
+    title: "Clientes organizados",
+    description: "Centralize empresas e pessoas, histórico de relacionamento, dados cadastrais e próximos passos em um único lugar.",
+  },
+  {
+    icon: FileSignature,
+    title: "Orçamentos e propostas",
+    description: "Monte oportunidades comerciais com valores, itens, prazos e condições prontas para apresentar ao cliente.",
+  },
+  {
+    icon: FileText,
+    title: "Contratos com método",
+    description: "Transforme propostas aprovadas em documentos comerciais e acompanhe o avanço de cada negociação.",
+  },
+  {
+    icon: BarChart3,
+    title: "Indicadores de performance",
+    description: "Veja o que está parado, o que avança e onde sua equipe deve concentrar energia ao longo do dia.",
+  },
+];
+
+const operatingSteps = [
+  "Cadastre sua empresa e convide os usuários da equipe.",
+  "Organize clientes, oportunidades e documentos comerciais.",
+  "Acompanhe a execução com indicadores claros e próximos passos.",
+];
 
 export default function Home() {
-  const [, setLocation] = useLocation();
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    nome: "",
-    cnpj: "",
-    whatsapp: "",
-    email: "",
-    cidade: "",
-    estado: "",
-    faturamento: "",
-  });
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!isValidCnpj(formData.cnpj)) {
-      setSubmitError("Informe um CNPJ válido para solicitar o contato.");
-      return;
-    }
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      await submitLead({
-        nome: formData.nome,
-        telefone: formData.whatsapp,
-        email: formData.email,
-        empresa: null,
-        cpf_cnpj: formData.cnpj,
-        tipo_pessoa: "pj",
-        tipoPessoa: "pj",
-        cidade: formData.cidade,
-        estado: formData.estado,
-        finalidade: `Faturamento informado: ${formData.faturamento}`,
-        produto_interesse: "Assessoria de crédito empresarial",
-        origem: "landing_home",
-        pagina: "/",
-      });
-      setLocation("/sucesso?origem=home");
-    } catch (error) {
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível enviar seus dados. Tente novamente.",
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const faqs = [
-    {
-      question: "Como funciona a assessoria empresarial da Destrava?",
-      answer: "Nossa atuação começa com o entendimento do cenário da sua empresa. A partir disso, conduzimos a jornada com análise, organização e acompanhamento próximo, para tornar o processo mais claro, seguro e menos desgastante para o empresário."
-    },
-    {
-      question: "Preciso saber exatamente qual solução minha empresa precisa?",
-      answer: "Não. Muitas empresas chegam até nós justamente buscando direção. A Destrava ajuda a dar clareza ao cenário e a organizar o caminho com base na necessidade real do negócio."
-    },
-    {
-      question: "A Destrava acompanha o processo do início ao fim?",
-      answer: "Sim. Nosso diferencial está justamente na condução completa da operação, com apoio consultivo e acompanhamento ao longo de toda a jornada."
-    },
-    {
-      question: "O processo é muito burocrático para o empresário?",
-      answer: "Nosso objetivo é exatamente reduzir essa carga. A Destrava organiza as etapas, orienta o que é necessário e conduz o processo para que o empresário tenha mais foco na empresa e menos desgaste operacional."
-    },
-    {
-      question: "Como posso iniciar a análise da minha empresa?",
-      answer: "Você pode começar pelo botão principal da página e solicitar uma análise. A partir daí, nossa equipe entra em contato para entender o cenário e orientar os próximos passos."
-    }
-  ];
-
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@graph": [
-      organizationStructuredData,
-      ...localBusinessStructuredData,
-      faqStructuredData(faqs)
-    ]
-  };
-
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-white text-slate-900">
       <SEO
-        title="Destrave o crédito da sua empresa | Destrava Crédito"
-        description="Destrave o crédito da sua empresa com assessoria especializada. Analisamos o cenário, avaliamos linhas compatíveis e orientamos a operação com clareza. Condições sujeitas à instituição financeira."
-        keywords="assessoria de crédito empresarial, consultoria de crédito, captação de recursos para empresas, destravar crédito, financiamento empresarial, Pronampe 2026, ProCred 360, crédito para MEI, crédito para microempresa, crédito para pequena empresa"
-        image="https://destravacredito.com/og-image.png"
-        structuredData={structuredData}
+        title="Work Pro — Aceleração e Performance Empresarial"
+        description="Work Pro é a plataforma multiusuários para organizar clientes, orçamentos, propostas, contratos e a performance diária da sua empresa."
+        keywords="gestão empresarial, performance comercial, clientes, orçamentos, propostas, contratos, plataforma multiusuários"
+        image="https://dashwork.destravacredito.com/workpro-mark.svg"
       />
       <Header />
 
-      {/* HERO SECTION */}
-      <section className="relative bg-gradient-to-br from-[var(--color-caixa-blue)] via-[#002d8a] to-[var(--color-caixa-blue-dark)] text-white pt-6 pb-10 md:pt-8 md:pb-14 overflow-hidden">
-        {/* Padrão de fundo sutil */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30"></div>
-        {/* Gradiente decorativo */}
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/5 to-transparent pointer-events-none"></div>
-
-        <div className="container relative z-10">
-          <div className="grid md:grid-cols-2 gap-6 md:gap-10 items-start">
-            <div>
-               <h1 className="text-4xl md:text-5xl font-bold mb-5 leading-tight">
-                 Destrave o crédito da sua empresa com assessoria especializada em crédito bancário e governamental.
-               </h1>
-              <p className="text-xl md:text-2xl mb-4 text-white/90 leading-relaxed">
-                A Destrava atua ao lado da sua empresa para identificar as melhores linhas de crédito, organizar a operação e conduzir todo o processo com mais segurança, estratégia e clareza.
+      <main>
+        <section className="relative overflow-hidden bg-[#102a43] text-white">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,rgba(15,159,145,.34),transparent_34%),radial-gradient(circle_at_12%_88%,rgba(55,113,177,.28),transparent_32%)]" />
+          <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 md:grid-cols-[1.08fr_.92fr] md:px-10 md:py-28">
+            <div className="flex flex-col justify-center">
+              <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-teal-200">
+                <Sparkles className="h-4 w-4" /> Operação em ritmo de crescimento
+              </div>
+              <h1 className="max-w-3xl text-4xl font-black leading-[1.08] tracking-tight md:text-6xl">
+                Mais velocidade para decidir. Mais clareza para executar.
+              </h1>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-200 md:text-xl">
+                O Work Pro reúne a rotina comercial da sua empresa em uma plataforma simples, colaborativa e orientada a performance.
               </p>
-              <p className="text-base mb-8 text-white/75 leading-relaxed">
-                Cuidamos da estruturação da demanda, do direcionamento correto e do acompanhamento da operação para que sua empresa avance com menos desgaste, mais previsibilidade e melhores condições de crédito.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 mb-10">
-                 <Button
-                     asChild
-                     size="lg"
-                     className="bg-[var(--color-caixa-yellow)] hover:bg-yellow-500 text-black font-bold shadow-lg w-full sm:w-auto"
-                   >
-                     <Link href="/simular" data-cta-position="home-hero-primary">
-                       → Destrave seu crédito
-                     </Link>
-                   </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="lg"
-                  className="font-semibold bg-white/10 border-white/30 text-white hover:bg-white/20 w-full sm:w-auto"
-                >
-                  <a
-                    href="https://wa.me/556135268355"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-cta-position="home-hero-whatsapp"
-                  >
-                    <MessageCircle className="mr-2 h-5 w-5" />
-                    Falar no WhatsApp
-                  </a>
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <Button asChild size="lg" className="bg-[#0f9f91] font-bold text-white shadow-lg shadow-teal-950/20 hover:bg-[#0b8176]">
+                  <Link href="/colaborador/login">Acessar o Work Pro <ArrowRight className="ml-2 h-5 w-5" /></Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="border-white/25 bg-white/5 font-semibold text-white hover:bg-white/10 hover:text-white">
+                  <a href="#modulos">Conhecer a plataforma</a>
                 </Button>
               </div>
-
-              {/* Prova rápida */}
-              <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/20">
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-[var(--color-caixa-yellow)]">Atendimento consultivo</p>
-                </div>
-                <div className="text-center border-x border-white/20">
-                  <p className="text-sm font-semibold text-[var(--color-caixa-yellow)]">Condução completa do processo</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-[var(--color-caixa-yellow)]">Sem custo antecipado</p>
-                </div>
+              <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm text-slate-300">
+                <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-teal-300" /> Multiusuários por conta</span>
+                <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-teal-300" /> Dados organizados por empresa</span>
+                <span className="inline-flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-teal-300" /> Permissões por função</span>
               </div>
             </div>
 
-            <div className="flex flex-col items-center justify-center mt-6 md:mt-0 gap-5">
-              <svg
-                className="h-20 w-auto opacity-90"
-                viewBox="0 0 320 90"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                role="img"
-                aria-label="Ilustração de crescimento financeiro empresarial"
-              >
-                <path d="M10 75 L70 45 L120 58 L180 20 L240 35 L310 8" stroke="#fbbf24" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                <circle cx="70" cy="45" r="6" fill="#fbbf24" />
-                <circle cx="180" cy="20" r="6" fill="#fbbf24" />
-                <circle cx="310" cy="8" r="7" fill="#fbbf24" />
-                <path d="M296 8 L310 8 L310 22" stroke="#fbbf24" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                <rect x="4" y="78" width="312" height="2" fill="white" fillOpacity="0.15" />
-              </svg>
-              <HeroCarousel />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <BannerDisplay position="home_top" ariaLabel="Destaque principal" />
-
-      {/* BLOCO INSTITUCIONAL PRINCIPAL */}
-      <section className="py-20 bg-muted/30">
-        <div className="container">
-          <div className="max-w-4xl mx-auto text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              A solução que sua empresa precisa para obter crédito com clareza, honestidade e menos desgaste
-            </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              A Destrava atua com assessoria empresarial para empresas que precisam de direção, organização e apoio real na busca por recursos. Mais do que apresentar caminhos, nossa atuação envolve entendimento do cenário, análise estratégica e condução completa do processo, reduzindo a carga operacional do empresário e dando mais segurança em cada etapa.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <div className="bg-card p-8 rounded-lg border-2 border-border">
-              <h3 className="text-2xl font-bold mb-4">O que sua empresa encontra na Destrava</h3>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>Análise estratégica do cenário da empresa</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>Direcionamento mais claro para a necessidade do negócio</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>Condução completa do processo com apoio consultivo</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>Organização da jornada com menos peso para o empresário</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>Acompanhamento próximo do início ao avanço da operação</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 className="h-6 w-6 text-primary flex-shrink-0 mt-0.5" />
-                  <span>Soluções pensadas para a realidade e o momento da empresa</span>
-                </li>
-              </ul>
-              <p className="mt-6 text-sm text-muted-foreground italic">
-                Nosso papel é transformar um processo que costuma ser complexo em uma jornada mais clara, organizada e conduzida com método.
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-primary to-[var(--color-caixa-blue-dark)] text-white p-8 rounded-lg shadow-lg">
-              <h3 className="text-2xl font-bold mb-6">Por que empresas escolhem a Destrava</h3>
-              <p className="text-white/80 mb-6">
-                Porque encontrar recursos para a empresa exige mais do que tentativa: exige análise, condução, organização e acompanhamento.
-              </p>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-lg font-bold mb-1">Atendimento consultivo de verdade</p>
-                  <p className="text-white/80 text-sm">Sua empresa é atendida com escuta, análise e direcionamento, sem respostas genéricas.</p>
-                </div>
-                <div className="border-t border-white/20 pt-4">
-                  <p className="text-lg font-bold mb-1">Condução completa do processo</p>
-                  <p className="text-white/80 text-sm">A Destrava assume a parte pesada da jornada e organiza cada etapa para reduzir a carga operacional.</p>
-                </div>
-                <div className="border-t border-white/20 pt-4">
-                  <p className="text-lg font-bold mb-1">Mais clareza para decidir</p>
-                  <p className="text-white/80 text-sm">Você entende melhor o caminho da sua empresa, com mais segurança, mais contexto e menos ruído.</p>
-                </div>
-                <div className="border-t border-white/20 pt-4">
-                  <p className="text-lg font-bold mb-1">Agilidade com organização</p>
-                  <p className="text-white/80 text-sm">Um processo bem conduzido reduz retrabalho, evita perda de tempo e melhora a experiência do início ao fim.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* COMO FUNCIONA */}
-      <section id="como-funciona" className="py-20 scroll-mt-20">
-        <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Como funciona nossa assessoria
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Um processo pensado para simplificar a jornada da sua empresa e conduzir cada etapa com mais clareza.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-4 gap-8">
-            <BenefitCard
-              icon={Lightbulb}
-              title="1. Entendimento do cenário da empresa"
-              description="Começamos entendendo o momento do negócio, a necessidade da empresa e o objetivo da operação."
-            />
-            <BenefitCard
-              icon={TrendingUp}
-              title="2. Análise estratégica do perfil"
-              description="Avaliamos o contexto com olhar técnico e consultivo para direcionar o caminho mais adequado."
-            />
-            <BenefitCard
-              icon={HeadphonesIcon}
-              title="3. Condução da operação"
-              description="A Destrava organiza e acompanha o processo, reduzindo a carga operacional sobre o empresário."
-            />
-            <BenefitCard
-              icon={CheckCircle2}
-              title="4. Acompanhamento até o avanço da solução"
-              description="Seguimos com proximidade, clareza e apoio em cada fase, para que a empresa tenha segurança ao longo da jornada."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* DIFERENCIAIS / BENEFÍCIOS */}
-      <section className="py-20 bg-muted/30">
-        <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Mais do que apoio financeiro: uma assessoria que organiza, conduz e facilita
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-card p-6 rounded-lg border border-border text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Users className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Menos peso para o empresário</h3>
-              <p className="text-muted-foreground text-sm">
-                A empresa não precisa carregar sozinha a complexidade do processo.
-              </p>
-            </div>
-
-            <div className="bg-card p-6 rounded-lg border border-border text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Target className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Mais clareza em cada etapa</h3>
-              <p className="text-muted-foreground text-sm">
-                Você entende o caminho com mais segurança e menos incerteza.
-              </p>
-            </div>
-
-            <div className="bg-card p-6 rounded-lg border border-border text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <HeadphonesIcon className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Acompanhamento próximo</h3>
-              <p className="text-muted-foreground text-sm">
-                Atuação consultiva com presença real ao longo da jornada.
-              </p>
-            </div>
-
-            <div className="bg-card p-6 rounded-lg border border-border text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <FileCheck className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Processo mais organizado</h3>
-              <p className="text-muted-foreground text-sm">
-                Mais método, menos improviso e mais fluidez para a empresa avançar.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <BannerDisplay position="home_middle" ariaLabel="Soluções em destaque" />
-
-      {/* LINHAS DE CRÉDITO */}
-      <section className="py-20 bg-muted/30">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Linhas de Crédito Disponíveis</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Trabalhamos com as principais linhas de crédito do mercado. Conheça cada programa e descubra qual é o ideal para sua empresa.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                logo: "/logo-pronampe.webp",
-                title: "PRONAMPE",
-                desc: "Programa federal para MEI, micro e pequenas empresas, sujeito às regras vigentes e à análise da instituição financeira.",
-                href: "/pronampe",
-                badge: "Mais popular",
-                badgeColor: "bg-green-100 text-green-700",
-              },
-              {
-                logo: "/logo-procred360.webp",
-                title: "ProCred 360",
-                desc: "Linha para MEI e microempresas, com elegibilidade e limites vinculados às regras vigentes e ao faturamento.",
-                href: "/procred360",
-                badge: "Programa Acredita",
-                badgeColor: "bg-blue-100 text-blue-700",
-              },
-              {
-                logo: "/logo-caixa.png",
-                title: "Giro CAIXA Fácil",
-                desc: "Modalidade para capital de giro, com limite, taxa, CET e prazo definidos na proposta conforme análise da CAIXA.",
-                href: "/giro-caixa-facil",
-                badge: "Capital de giro",
-                badgeColor: "bg-orange-100 text-orange-700",
-              },
-              {
-                logo: "/logo-bndes-fgi.jpg",
-                title: "PEAC FGI",
-                desc: "Programa de garantia do BNDES para apoiar operações empresariais elegíveis, sujeitas à análise da instituição financeira.",
-                href: "/peac-fgi",
-                badge: "Grandes volumes",
-                badgeColor: "bg-purple-100 text-purple-700",
-              },
-              {
-                logo: "/logo-fco.webp",
-                title: "FCO",
-                desc: "Financiamento do Fundo Constitucional do Centro-Oeste para empresas e produtores rurais de GO, MT, MS e DF.",
-                href: "/fco",
-                badge: "Centro-Oeste",
-                badgeColor: "bg-violet-100 text-violet-700",
-              },
-              {
-                logo: "/logo-fampe.webp",
-                title: "FAMPE",
-                desc: "Fundo do Sebrae que complementa as garantias exigidas pelos bancos, facilitando o acesso ao crédito para pequenos negócios.",
-                href: "/fampe",
-                badge: "Sebrae",
-                badgeColor: "bg-amber-100 text-amber-700",
-              },
-            ].map((linha) => (
-              <div key={linha.title} className="bg-card rounded-xl border border-border p-6 flex flex-col hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="h-12 w-24 flex items-center">
-                    <img
-                      src={linha.logo}
-                      alt={linha.title}
-                      loading="lazy"
-                      decoding="async"
-                      width="96"
-                      height="48"
-                      className="max-h-12 max-w-full object-contain"
-                    />
+            <div className="relative flex items-center justify-center">
+              <div className="absolute h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
+              <div className="relative w-full max-w-md rounded-[2rem] border border-white/15 bg-white/10 p-5 shadow-2xl backdrop-blur-md">
+                <div className="rounded-3xl bg-white p-5 text-slate-900 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Visão de performance</p>
+                      <p className="mt-1 text-xl font-black text-[#102a43]">Sua operação hoje</p>
+                    </div>
+                    <div className="rounded-2xl bg-teal-50 p-3 text-[#0f9f91]"><Gauge className="h-6 w-6" /></div>
                   </div>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${linha.badgeColor}`}>{linha.badge}</span>
+                  <div className="grid grid-cols-2 gap-3 py-5">
+                    <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-semibold text-slate-500">Clientes ativos</p><p className="mt-2 text-3xl font-black text-[#102a43]">—</p><p className="mt-1 text-xs text-slate-400">dados da sua conta</p></div>
+                    <div className="rounded-2xl bg-teal-50 p-4"><p className="text-xs font-semibold text-teal-700">Propostas em avanço</p><p className="mt-2 text-3xl font-black text-[#0f9f91]">—</p><p className="mt-1 text-xs text-teal-700/70">acompanhe o ritmo</p></div>
+                  </div>
+                  <div className="rounded-2xl bg-[#102a43] p-4 text-white">
+                    <div className="flex items-center gap-3"><Activity className="h-5 w-5 text-teal-300" /><p className="font-bold">Próximas ações</p></div>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">A equipe visualiza pendências e oportunidades sem depender de planilhas espalhadas.</p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold mb-2">{linha.title}</h3>
-                <p className="text-muted-foreground text-sm flex-1 mb-4">{linha.desc}</p>
-                <Link href={linha.href} className="inline-flex items-center gap-1 text-primary font-semibold text-sm hover:underline">
-                  Saiba mais <ArrowRight className="h-4 w-4" />
-                </Link>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* EXPECTATIVAS DO ATENDIMENTO */}
-      <section className="py-20">
-        <div className="container">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              O que você pode esperar da assessoria
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Um processo consultivo, sem promessas de aprovação e com clareza sobre documentos, custos e próximos passos.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { icon: FileCheck, title: "Documentação organizada", text: "Checklist objetivo para reduzir pendências antes do encaminhamento." },
-              { icon: Shield, title: "Condições transparentes", text: "Taxa, CET, prazo e garantias devem ser confirmados na proposta da instituição." },
-              { icon: HeadphonesIcon, title: "Acompanhamento consultivo", text: "Orientação durante as etapas, respeitando a análise e a decisão da instituição financeira." },
-            ].map((item) => (
-              <div key={item.title} className="rounded-2xl border border-border bg-card p-7 shadow-sm">
-                <item.icon className="h-9 w-9 text-primary" aria-hidden="true" />
-                <h3 className="mt-5 text-xl font-bold">{item.title}</h3>
-                <p className="mt-3 leading-relaxed text-muted-foreground">{item.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="py-20 bg-muted/30">
-        <div className="container">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Perguntas frequentes
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                Esclareça as principais dúvidas sobre nossa assessoria empresarial e o início da sua jornada com a Destrava.
-              </p>
             </div>
-
-            <Accordion type="single" collapsible className="space-y-4">
-              {faqs.map((faq, index) => (
-                <AccordionItem
-                  key={index}
-                  value={`item-${index + 1}`}
-                  className="bg-card border border-border rounded-lg px-6"
-                >
-                  <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* FORMULÁRIO — SOLICITAR CONTATO */}
-      <section id="simulacao" className="py-20 scroll-mt-20">
-        <div className="container">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-12">
-              <p className="text-sm font-semibold uppercase tracking-wider text-primary mb-3">Solicite uma consultoria</p>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Fale com nossa equipe e entenda o melhor caminho para sua empresa
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                Preencha o formulário e solicite o contato da nossa equipe. Vamos entender o seu momento e orientar os próximos passos com mais clareza e segurança.
-              </p>
+        <section id="modulos" className="mx-auto max-w-7xl px-6 py-20 md:px-10 md:py-24">
+          <div className="max-w-2xl">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#0f9f91]">Uma base para o dia a dia</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-[#102a43] md:text-5xl">Tudo que sua equipe precisa para sair do improviso.</h2>
+            <p className="mt-5 text-lg leading-8 text-slate-600">O Work Pro foi desenhado para dar visibilidade à operação sem adicionar complexidade desnecessária.</p>
+          </div>
+          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {modules.map((module) => {
+              const Icon = module.icon;
+              return <article key={module.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-teal-200 hover:shadow-lg">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-[#0f9f91]"><Icon className="h-6 w-6" /></div>
+                <h3 className="mt-6 text-xl font-black text-[#102a43]">{module.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{module.description}</p>
+              </article>;
+            })}
+          </div>
+        </section>
+
+        <section className="bg-slate-50">
+          <div className="mx-auto grid max-w-7xl gap-12 px-6 py-20 md:grid-cols-2 md:px-10 md:py-24">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-[#0f9f91]">Como funciona</p>
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-[#102a43] md:text-4xl">Uma rotina mais leve, um time mais alinhado.</h2>
+              <p className="mt-5 text-lg leading-8 text-slate-600">Cada conta tem seu espaço de trabalho, seus usuários e suas permissões. A gestão acompanha a operação sem perder o contexto do negócio.</p>
+              <Button asChild className="mt-8 bg-[#102a43] font-bold hover:bg-[#183f60]"><Link href="/colaborador/login">Entrar na área da empresa <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
             </div>
-
-            <form
-              onSubmit={handleSubmit}
-              className="bg-card p-8 rounded-lg border-2 border-border shadow-lg space-y-6"
-            >
-              <div className="mb-2">
-                <h3 className="text-xl font-bold mb-1">Solicite o contato da nossa equipe</h3>
-                <p className="text-sm text-muted-foreground">Informe seus dados e nossa equipe entrará em contato para entender sua necessidade e apresentar a melhor orientação.</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome Completo *</Label>
-                <Input
-                  id="nome"
-                  type="text"
-                  required
-                  value={formData.nome}
-                  onChange={(e) => handleChange("nome", e.target.value)}
-                  placeholder="Seu nome completo"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cnpj">CNPJ / MEI *</Label>
-                <Input
-                  id="cnpj"
-                  type="text"
-                  required
-                  value={formData.cnpj}
-                  onChange={(e) => handleChange("cnpj", formatCnpj(e.target.value))}
-                  placeholder="00.000.000/0000-00"
-                  inputMode="numeric"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="whatsapp">WhatsApp *</Label>
-                  <Input
-                    id="whatsapp"
-                    type="tel"
-                    required
-                    value={formData.whatsapp}
-                    onChange={(e) => handleChange("whatsapp", e.target.value)}
-                    placeholder="(61) 9 9999-9999"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => handleChange("email", e.target.value)}
-                    placeholder="seu@email.com"
-                  />
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cidade">Cidade *</Label>
-                  <Input
-                    id="cidade"
-                    type="text"
-                    required
-                    value={formData.cidade}
-                    onChange={(e) => handleChange("cidade", e.target.value)}
-                    placeholder="Sua cidade"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="estado">Estado *</Label>
-                  <Input
-                    id="estado"
-                    type="text"
-                    required
-                    value={formData.estado}
-                    onChange={(e) => handleChange("estado", e.target.value)}
-                    placeholder="SP"
-                    maxLength={2}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="faturamento">Faturamento Mensal Aproximado *</Label>
-                <Select
-                  value={formData.faturamento}
-                  onValueChange={(value) => handleChange("faturamento", value)}
-                  required
-                >
-                  <SelectTrigger id="faturamento">
-                    <SelectValue placeholder="Selecione uma faixa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ate-5k">Até R$ 5.000</SelectItem>
-                    <SelectItem value="5k-10k">R$ 5.000 - R$ 10.000</SelectItem>
-                    <SelectItem value="10k-20k">R$ 10.000 - R$ 20.000</SelectItem>
-                    <SelectItem value="20k-50k">R$ 20.000 - R$ 50.000</SelectItem>
-                    <SelectItem value="50k-100k">R$ 50.000 - R$ 100.000</SelectItem>
-                    <SelectItem value="acima-100k">Acima de R$ 100.000</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <FormSubmitError message={submitError} />
-
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full font-semibold"
-                disabled={submitting}
-                aria-busy={submitting}
-              >
-                {submitting ? "Enviando com segurança..." : "→ Solicitar contato"}
-              </Button>
-
-              <p className="text-xs text-muted-foreground text-center">
-                Ao enviar seus dados, você concorda com nossa{" "}
-                <a href="/politica-privacidade" className="underline">
-                  Política de Privacidade
-                </a>
-                . Suas informações são tratadas com confidencialidade e utilizadas apenas para contato da nossa equipe.
-              </p>
-            </form>
+            <div className="space-y-4">
+              {operatingSteps.map((step, index) => <div key={step} className="flex gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0f9f91] text-sm font-black text-white">{index + 1}</div><p className="pt-1 font-semibold leading-6 text-slate-700">{step}</p></div>)}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <BannerDisplay position="home_bottom" ariaLabel="Conteúdo recomendado" />
-
+        <section className="mx-auto max-w-7xl px-6 py-20 md:px-10 md:py-24">
+          <div className="rounded-[2rem] bg-[#0f9f91] px-7 py-12 text-center text-white md:px-16">
+            <ShieldCheck className="mx-auto h-10 w-10 text-teal-100" />
+            <h2 className="mt-5 text-3xl font-black md:text-4xl">Sua empresa no controle da próxima ação.</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-teal-50">Acesse o ambiente da sua conta para cadastrar clientes, construir propostas, formalizar contratos e acompanhar a performance da equipe.</p>
+            <Button asChild size="lg" className="mt-8 bg-white font-bold text-[#0f9f91] hover:bg-teal-50"><Link href="/colaborador/login">Acessar Work Pro <ArrowRight className="ml-2 h-5 w-5" /></Link></Button>
+          </div>
+        </section>
+      </main>
       <Footer />
     </div>
   );

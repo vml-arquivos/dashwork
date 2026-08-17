@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Work Pro</title>
+  <desc id="desc">Símbolo geométrico Work Pro</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f9f91"/>
+      <stop offset="1" stop-color="#102a43"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="url(#g)"/>
+  <path d="M25 34h13l9 37 11-28h12l11 28 9-37h13L91 94H78L64 58 50 94H37L25 34Z" fill="#fff"/>
+  <path d="M64 20v88" stroke="#b9f3e7" stroke-width="5" stroke-linecap="round" opacity=".85"/>
+</svg>

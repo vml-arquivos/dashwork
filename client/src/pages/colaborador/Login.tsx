@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Lock, Mail, Shield } from "lucide-react";
 
-const PLATFORM_NAME = import.meta.env.VITE_APP_NAME || "Ritmo";
+const PLATFORM_NAME = import.meta.env.VITE_APP_NAME || "Work Pro";
 
 export default function ColaboradorLogin() {
   const { signIn, isAuthenticated } = useAuth();
@@ -28,17 +28,17 @@ export default function ColaboradorLogin() {
     setError("");
     setLoading(true);
 
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(email.trim(), password);
 
     if (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const errMsg: string = (error as any)?.message ?? "";
       setError(
-        errMsg === "Invalid login credentials"
+        errMsg === "Invalid login credentials" || /credenciais|senha|usuário|utilizador/i.test(errMsg)
           ? "E-mail ou senha incorretos. Verifique suas credenciais."
           : errMsg === "Email not confirmed"
           ? "Confirme seu e-mail antes de fazer login."
-          : "Erro ao fazer login. Tente novamente."
+          : errMsg || "Não foi possível concluir o acesso. Tente novamente."
       );
       setLoading(false);
       return;
@@ -48,7 +48,7 @@ export default function ColaboradorLogin() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#001f6b] via-[#002d8a] to-[#003db5]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#102a43] via-[#123d50] to-[#0f9f91]">
       {/* Header mínimo */}
       <header className="p-6">
         <a href="/" className="flex items-center gap-2 text-white/80 hover:text-white transition-colors w-fit">
@@ -63,7 +63,7 @@ export default function ColaboradorLogin() {
           <div className="flex justify-center mb-6">
             <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-white text-sm">
               <Shield className="h-4 w-4 text-yellow-400" />
-              <span>Área Restrita — Colaboradores</span>
+              <span>Área segura — equipe da sua empresa</span>
             </div>
           </div>
 
@@ -72,9 +72,9 @@ export default function ColaboradorLogin() {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
                 <Lock className="h-8 w-8 text-primary" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Acesso do Colaborador</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Entrar no Work Pro</h1>
               <p className="text-muted-foreground text-sm mt-1">
-                Entre com suas credenciais para acessar o painel
+                Acesse o ambiente de trabalho da sua empresa
               </p>
             </div>
 
@@ -134,15 +134,15 @@ export default function ColaboradorLogin() {
                     Entrando...
                   </>
                 ) : (
-                  "Entrar no Painel"
+                  "Entrar na plataforma"
                 )}
               </Button>
             </form>
 
             <p className="text-center text-xs text-muted-foreground mt-6">
-              Acesso exclusivo para usuários autorizados da plataforma.
+              Seu acesso é individual e pertence a uma conta empresarial.
               <br />
-              Problemas? Entre em contato com o administrador.
+              Para criar ou liberar usuários, fale com o administrador da conta.
             </p>
           </div>
 

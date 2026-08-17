@@ -79,31 +79,32 @@ import {
   salvarFeatureAccessConfig,
 } from "./services/featureAccessService";
 import { enviarDocumento, resolverTokenPublico } from "./services/documentDeliveryService";
+import { LEGACY_DEFAULT_CONTA_ID } from "./tenantContext";
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DESTRAVA_RELEASE = process.env.DESTRAVA_RELEASE || "fix66-destinatarios-ranking-nexus-20260810";
+const DESTRAVA_RELEASE = process.env.WORKPRO_RELEASE || process.env.DESTRAVA_RELEASE || "workpro-20260817";
 
 // Quando um navegador/CDN mantém um index.html antigo, ele pode pedir um chunk
 // Vite que já não existe no container novo. Este módulo é servido somente para
 // esse JS ausente: tenta uma atualização sem cache e, se o deploy estiver
 // realmente inconsistente, mostra uma tela recuperável em vez de branco total.
 const FRONTEND_ASSET_RECOVERY_MODULE = `(() => {
-  const key = "destrava_asset_recovery_at";
+  const key = "workpro_asset_recovery_at";
   const now = Date.now();
   let last = 0;
   try { last = Number(sessionStorage.getItem(key) || "0"); } catch (_) {}
   if (last && now - last < 15000) {
     const wait = Math.max(1000, 15100 - (now - last));
-    document.body.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;background:#f8fafc;padding:24px;font-family:Arial,sans-serif;color:#0f172a"><section style="max-width:560px;text-align:center;background:white;border:1px solid #bfdbfe;border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(15,23,42,.12)"><h1 style="color:#1e3a8a;margin:0 0 12px">Atualizando o Destrava</h1><p style="line-height:1.55;margin:0 0 18px">Os arquivos da nova versão ainda estão sendo sincronizados. A página tentará novamente sem perder seus dados.</p><button id="destrava-retry" style="border:0;border-radius:10px;background:#1d4ed8;color:white;padding:11px 18px;font-weight:700;cursor:pointer">Tentar novamente agora</button></section></main>';
-    document.getElementById("destrava-retry")?.addEventListener("click", () => location.reload());
+    document.body.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;background:#f8fafc;padding:24px;font-family:Arial,sans-serif;color:#0f172a"><section style="max-width:560px;text-align:center;background:white;border:1px solid #bfdbfe;border-radius:18px;padding:28px;box-shadow:0 20px 60px rgba(15,23,42,.12)"><h1 style="color:#102a43;margin:0 0 12px">Atualizando o Work Pro</h1><p style="line-height:1.55;margin:0 0 18px">Os arquivos da nova versão ainda estão sendo sincronizados. A página tentará novamente sem perder seus dados.</p><button id="workpro-retry" style="border:0;border-radius:10px;background:#1d4ed8;color:white;padding:11px 18px;font-weight:700;cursor:pointer">Tentar novamente agora</button></section></main>';
+    document.getElementById("workpro-retry")?.addEventListener("click", () => location.reload());
     setTimeout(() => location.reload(), wait);
     return;
   }
   try { sessionStorage.setItem(key, String(now)); } catch (_) {}
   const url = new URL(location.href);
-  url.searchParams.set("__destrava_reload", String(now));
+  url.searchParams.set("__workpro_reload", String(now));
   location.replace(url.toString());
 })();`;
 
@@ -3409,20 +3410,37 @@ async function startServer() {
     try {
       const colaborador = (req as Request & { colaborador: any }).colaborador;
       const result = await pool.query(
-        `SELECT id, email, nome, cargo, telefone, ativo, chatwoot_agente_id,
-                COALESCE(perfil, CASE
-                  WHEN LOWER(COALESCE(cargo, '')) IN ('administrador', 'admin', 'diretor') THEN 'admin'
-                  WHEN LOWER(COALESCE(cargo, '')) IN ('gerente comercial', 'gerente', 'gestor') THEN 'gestor'
-                  WHEN LOWER(COALESCE(cargo, '')) IN ('analista de crédito', 'analista de credito', 'analista') THEN 'analista'
+        `SELECT c.id, c.email, c.nome, c.cargo, c.ativo,
+                to_jsonb(c)->>'chatwoot_agente_id' AS chatwoot_agente_id,
+                COALESCE(c.conta_id, $2::uuid) AS conta_id,
+                cp.nome AS conta_nome,
+                cp.perfil_base AS conta_perfil,
+                cp.modulos_ativos,
+                CASE
+                  WHEN LOWER(COALESCE(to_jsonb(c)->>'acesso_acompanhamento_bancario', '')) IN ('true', 't', '1') THEN TRUE
+                  WHEN LOWER(COALESCE(to_jsonb(c)->>'acesso_acompanhamento_bancario', '')) IN ('false', 'f', '0') THEN FALSE
+                  ELSE FALSE
+                END AS acesso_acompanhamento_bancario,
+                COALESCE(NULLIF(to_jsonb(c)->>'perfil', ''), CASE
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('administrador', 'admin', 'diretor') THEN 'admin'
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('gerente comercial', 'gerente', 'gestor') THEN 'gestor'
+                  WHEN LOWER(COALESCE(c.cargo, '')) IN ('analista de crédito', 'analista de credito', 'analista') THEN 'analista'
                   ELSE 'agente'
                 END) AS perfil,
-                COALESCE(pode_atender_leads, CASE WHEN LOWER(COALESCE(cargo, '')) IN ('captador externo', 'estagiário', 'estagiario') THEN FALSE ELSE TRUE END) AS pode_atender_leads,
-                COALESCE(pode_ver_todos_leads, CASE
-                  WHEN LOWER(COALESCE(cargo, '')) IN ('administrador', 'admin', 'diretor', 'gerente comercial', 'gerente', 'gestor') THEN TRUE
-                  ELSE FALSE
-                END) AS pode_ver_todos_leads
-           FROM colaboradores WHERE id = $1`,
-        [colaborador.id]
+                CASE
+                  WHEN LOWER(COALESCE(to_jsonb(c)->>'pode_atender_leads', '')) IN ('true', 't', '1') THEN TRUE
+                  WHEN LOWER(COALESCE(to_jsonb(c)->>'pode_atender_leads', '')) IN ('false', 'f', '0') THEN FALSE
+                  ELSE LOWER(COALESCE(c.cargo, '')) NOT IN ('captador externo', 'estagiário', 'estagiario')
+                END AS pode_atender_leads,
+                CASE
+                  WHEN LOWER(COALESCE(to_jsonb(c)->>'pode_ver_todos_leads', '')) IN ('true', 't', '1') THEN TRUE
+                  WHEN LOWER(COALESCE(to_jsonb(c)->>'pode_ver_todos_leads', '')) IN ('false', 'f', '0') THEN FALSE
+                  ELSE LOWER(COALESCE(c.cargo, '')) IN ('administrador', 'admin', 'diretor', 'gerente comercial', 'gerente', 'gestor')
+                END AS pode_ver_todos_leads
+           FROM colaboradores c
+           LEFT JOIN contas_plataforma cp ON cp.id = COALESCE(c.conta_id, $2::uuid)
+          WHERE c.id = $1`,
+        [colaborador.id, process.env.DEFAULT_CONTA_ID || LEGACY_DEFAULT_CONTA_ID]
       );
       const user = result.rows[0];
       if (!user) {

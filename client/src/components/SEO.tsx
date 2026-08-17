@@ -188,73 +188,16 @@ export const organizationStructuredData = {
   "@id": `${SITE_URL}/#organization`,
   name: SITE_NAME,
   description:
-    "Assessoria empresarial para captação de recursos e crédito para empresas, com condução completa do processo, atendimento consultivo e acompanhamento próximo.",
+    "Plataforma multiusuários para aceleração e performance empresarial, com clientes, propostas, contratos e indicadores em um único ambiente.",
   url: `${SITE_URL}/`,
-  logo: `${SITE_URL}/destrava-logo.png`,
+  logo: `${SITE_URL}/workpro-mark.svg`,
   image: DEFAULT_OG_IMAGE,
-  telephone: "+55-61-3526-8355",
-  address: {
-    "@type": "PostalAddress",
-    addressCountry: "BR",
-    addressLocality: "Brasília",
-    addressRegion: "DF",
-  },
-  sameAs: ["https://www.instagram.com/destravacredito"],
+  areaServed: { "@type": "Country", name: "Brasil" },
+  sameAs: [],
 };
 
-// LocalBusiness/ProfessionalService por unidade física -- é o que faltava pra SEO local
-// (Organization sozinho não conta como "negócio local" pro Google). Uma entrada por
-// endereço, seguindo o padrão schema.org pra negócio com múltiplas unidades.
-// Só inclui dado real e confirmado: CEP de Brasília confirmado no Google Maps (perfil
-// verificado da empresa); Goiânia não tem CEP/geo confirmado ainda, por isso fica de fora
-// em vez de inventar.
-export const localBusinessStructuredData = [
-  {
-    "@context": "https://schema.org",
-    "@type": "ProfessionalService",
-    "@id": `${SITE_URL}/#local-brasilia`,
-    name: SITE_NAME,
-    parentOrganization: { "@id": `${SITE_URL}/#organization` },
-    telephone: "+55-61-3526-8355",
-    url: `${SITE_URL}/`,
-    image: DEFAULT_OG_IMAGE,
-    priceRange: "$$",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "QND 25 Lote 40 - Taguatinga Norte",
-      addressLocality: "Brasília",
-      addressRegion: "DF",
-      postalCode: "72120-250",
-      addressCountry: "BR",
-    },
-    openingHoursSpecification: [
-      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "08:00", closes: "18:00" },
-      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Saturday"], opens: "08:00", closes: "12:00" },
-    ],
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "ProfessionalService",
-    "@id": `${SITE_URL}/#local-goiania`,
-    name: SITE_NAME,
-    parentOrganization: { "@id": `${SITE_URL}/#organization` },
-    telephone: "+55-61-3526-8355",
-    url: `${SITE_URL}/`,
-    image: DEFAULT_OG_IMAGE,
-    priceRange: "$$",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "Praça Cel Vicente Sanches de Almeida, LT 07 Sala 03 - Crimeia Leste",
-      addressLocality: "Goiânia",
-      addressRegion: "GO",
-      addressCountry: "BR",
-    },
-    openingHoursSpecification: [
-      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], opens: "08:00", closes: "18:00" },
-      { "@type": "OpeningHoursSpecification", dayOfWeek: ["Saturday"], opens: "08:00", closes: "12:00" },
-    ],
-  },
-];
+// O Work Pro é uma plataforma digital; não publicamos endereço ou telefone de uma operação física.
+export const localBusinessStructuredData: Record<string, unknown>[] = [];
 
 export const serviceStructuredData = (serviceName: string, description: string) => ({
   "@context": "https://schema.org",
@@ -264,8 +207,8 @@ export const serviceStructuredData = (serviceName: string, description: string) 
   description: description,
   provider: {
     "@type": "ProfessionalService",
-    name: "Destrava",
-    telephone: "+55-61-3526-8355",
+    name: "Work Pro",
+    url: SITE_URL,
   },
   areaServed: {
     "@type": "Country",
@@ -305,10 +248,10 @@ export const articleStructuredData = (
   },
     publisher: {
       "@type": "Organization",
-      name: "Destrava",
+      name: "Work Pro",
       logo: {
         "@type": "ImageObject",
-        url: `${SITE_URL}/destrava-logo.png`,
+        url: `${SITE_URL}/workpro-mark.svg`,
       },
     },
 });
@@ -348,14 +291,14 @@ export const blogPostingStructuredData = (
   dateModified: dateModified,
   author: {
     "@type": "Organization",
-    name: author || "Destrava",
+    name: author || "Work Pro",
   },
   publisher: {
     "@type": "Organization",
-    name: "Destrava",
+    name: "Work Pro",
     logo: {
       "@type": "ImageObject",
-      url: `${SITE_URL}/destrava-logo.png`,
+      url: `${SITE_URL}/workpro-mark.svg`,
     },
   },
   mainEntityOfPage: {

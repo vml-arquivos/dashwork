@@ -8,11 +8,11 @@
   --font-family-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-family-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   
-  /* Cores da CAIXA */
-  --color-caixa-blue: oklch(0.35 0.15 250);
-  --color-caixa-blue-dark: oklch(0.20 0.12 250);
-  --color-caixa-yellow: oklch(0.80 0.15 85);
-  --color-caixa-gray: oklch(0.97 0.002 250);
+  /* Identidade Work Pro: performance, clareza e confiança */
+  --color-workpro-navy: oklch(0.22 0.04 245);
+  --color-workpro-teal: oklch(0.69 0.13 178);
+  --color-workpro-cyan: oklch(0.82 0.11 195);
+  --color-workpro-gray: oklch(0.97 0.012 240);
   
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -53,13 +53,13 @@
 }
 
 :root {
-  /* Cores primárias baseadas na CAIXA */
-  --primary: var(--color-caixa-blue);
+  /* Cores primárias Work Pro */
+  --primary: var(--color-workpro-navy);
   --primary-foreground: oklch(1 0 0);
-  --secondary: var(--color-caixa-yellow);
-  --secondary-foreground: var(--color-caixa-blue-dark);
-  --accent: var(--color-caixa-yellow);
-  --accent-foreground: var(--color-caixa-blue-dark);
+  --secondary: var(--color-workpro-teal);
+  --secondary-foreground: var(--color-workpro-navy);
+  --accent: var(--color-workpro-cyan);
+  --accent-foreground: var(--color-workpro-navy);
   
   --radius: 0.5rem;
   --background: oklch(1 0 0);
@@ -68,28 +68,28 @@
   --card-foreground: oklch(0.20 0.012 250);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.20 0.012 250);
-  --muted: var(--color-caixa-gray);
+  --muted: var(--color-workpro-gray);
   --muted-foreground: oklch(0.45 0.01 250);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.90 0.005 250);
   --input: oklch(0.90 0.005 250);
-  --ring: var(--color-caixa-blue);
+  --ring: var(--color-workpro-teal);
   
-  --chart-1: var(--color-caixa-blue);
-  --chart-2: var(--color-caixa-yellow);
-  --chart-3: var(--color-caixa-blue-dark);
-  --chart-4: oklch(0.50 0.12 250);
-  --chart-5: oklch(0.65 0.10 85);
+  --chart-1: var(--color-workpro-navy);
+  --chart-2: var(--color-workpro-teal);
+  --chart-3: var(--color-workpro-cyan);
+  --chart-4: oklch(0.52 0.12 205);
+  --chart-5: oklch(0.64 0.12 160);
   
   --sidebar: oklch(1 0 0);
-  --sidebar-foreground: oklch(0.20 0.012 250);
-  --sidebar-primary: var(--color-caixa-blue);
+  --sidebar-foreground: oklch(0.22 0.04 245);
+  --sidebar-primary: var(--color-workpro-navy);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: var(--color-caixa-gray);
-  --sidebar-accent-foreground: oklch(0.20 0.012 250);
-  --sidebar-border: oklch(0.90 0.005 250);
-  --sidebar-ring: var(--color-caixa-blue);
+  --sidebar-accent: var(--color-workpro-gray);
+  --sidebar-accent-foreground: oklch(0.22 0.04 245);
+  --sidebar-border: oklch(0.90 0.012 240);
+  --sidebar-ring: var(--color-workpro-teal);
 }
 
 .dark {
@@ -195,66 +195,66 @@
   }
 }
 @layer components {
-  .destrava-shell {
-    --dt-blue: #2563eb;
-    --dt-blue-dark: #1e40af;
-    --dt-surface: rgba(255, 255, 255, 0.9);
-    --dt-border: rgba(203, 213, 225, 0.72);
-    color: #0f172a;
+  .workpro-shell {
+    --wp-navy: #102a43;
+    --wp-teal: #0f9f91;
+    --wp-surface: rgba(255, 255, 255, 0.94);
+    --wp-border: rgba(148, 163, 184, 0.30);
+    color: #102a43;
   }
 
-  .destrava-page {
+  .workpro-page {
     background:
-      radial-gradient(circle at 22% 0%, rgba(37, 99, 235, 0.08), transparent 28%),
-      linear-gradient(180deg, #f8fafc 0%, #f6f8fc 100%);
+      radial-gradient(circle at 22% 0%, rgba(15, 159, 145, 0.10), transparent 28%),
+      linear-gradient(180deg, #f8fbfc 0%, #f4f8fa 100%);
   }
 
-  .destrava-page > div:not(.emp-page) {
+  .workpro-page > div:not(.emp-page) {
     min-height: 100%;
   }
 
-  .destrava-page h1 {
+  .workpro-page h1 {
     letter-spacing: -0.03em;
   }
 
-  .destrava-page h2,
-  .destrava-page h3 {
+  .workpro-page h2,
+  .workpro-page h3 {
     letter-spacing: -0.02em;
   }
 
-  .destrava-page input:not([type="checkbox"]):not([type="radio"]),
-  .destrava-page select,
-  .destrava-page textarea {
-    border-radius: 0.95rem;
-    border-color: #dbe4ef;
-    background-color: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  .workpro-page input:not([type="checkbox"]):not([type="radio"]),
+  .workpro-page select,
+  .workpro-page textarea {
+    border-radius: 0.85rem;
+    border-color: #d7e4e7;
+    background-color: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 1px 2px rgba(16, 42, 67, 0.04);
     transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
   }
 
-  .destrava-page input:not([type="checkbox"]):not([type="radio"]):focus,
-  .destrava-page select:focus,
-  .destrava-page textarea:focus {
-    border-color: #93c5fd;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
+  .workpro-page input:not([type="checkbox"]):not([type="radio"]):focus,
+  .workpro-page select:focus,
+  .workpro-page textarea:focus {
+    border-color: #73cfc5;
+    box-shadow: 0 0 0 4px rgba(15, 159, 145, 0.12);
     outline: none;
   }
 
-  .destrava-page table {
+  .workpro-page table {
     border-collapse: separate;
     border-spacing: 0;
   }
 
-  .destrava-page thead th {
-    background: #f8fafc;
-    color: #64748b;
+  .workpro-page thead th {
+    background: #f2f8f8;
+    color: #577078;
     font-size: 0.74rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-weight: 800;
   }
 
-  .destrava-page tbody tr {
+  .workpro-page tbody tr {
     transition: background-color .18s ease, box-shadow .18s ease;
   }
 
